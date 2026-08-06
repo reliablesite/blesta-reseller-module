@@ -3014,6 +3014,19 @@ class Reliablesite extends Module
     /**
      * Builds the management tab bar shared by every admin screen.
      *
+     * Uses Paradigm's own .nav-tabs-custom, which supplies the colours, hover
+     * state, active underline and horizontal overflow scrolling for both light
+     * and dark (app/views/admin/paradigm/css/application.css:20485).
+     *
+     * Deliberately not routed through Widget::setTabs(): that renders into
+     * .card-filter-bar, which Paradigm pins to `flex-wrap: nowrap !important`
+     * (application.css:19572), so eleven tabs would clip rather than scroll.
+     * setTabs() is also for switching panels inside one card, whereas this is
+     * cross-page navigation sitting above a different card on every screen.
+     *
+     * Icons are Bootstrap Icons: Paradigm ships no Font Awesome CSS and no FA
+     * webfont, so `fas fa-*` renders as an empty box.
+     *
      * @param string $active The active tab key
      * @return string HTML
      */
@@ -3024,28 +3037,31 @@ class Reliablesite extends Module
         $addrow = $this->base_uri . 'settings/company/modules/addrow/' . $module_id . '/?scr=';
 
         $tabs = [
-            'home' => ['label' => 'Overview', 'icon' => 'fa-tachometer-alt',
+            'home' => ['label' => 'Overview', 'icon' => 'bi-speedometer2',
                 'url' => $this->base_uri . 'settings/company/modules/manage/' . $module_id],
-            'askbrian' => ['label' => 'Ask Brian', 'icon' => 'fa-robot', 'url' => $addrow . 'askbrian'],
-            'settings' => ['label' => 'Settings', 'icon' => 'fa-cog',
+            'askbrian' => ['label' => 'Ask Brian', 'icon' => 'bi-robot', 'url' => $addrow . 'askbrian'],
+            'settings' => ['label' => 'Settings', 'icon' => 'bi-gear',
                 'url' => $this->base_uri . 'settings/company/modules/editrow/' . $module_id . '/' . $row_id],
-            'pendingorders' => ['label' => 'Pending Orders', 'icon' => 'fa-hourglass-half', 'url' => $addrow . 'pendingorders'],
-            'servers' => ['label' => 'Servers', 'icon' => 'fa-server', 'url' => $addrow . 'servers'],
-            'catalog' => ['label' => 'Catalog', 'icon' => 'fa-box', 'url' => $addrow . 'catalog'],
-            'customers' => ['label' => 'Customers', 'icon' => 'fa-users', 'url' => $addrow . 'customers'],
-            'ddosprofiles' => ['label' => 'DDoS Profiles', 'icon' => 'fa-shield-alt', 'url' => $addrow . 'ddosprofiles'],
-            'ddoshistory' => ['label' => 'DDoS History', 'icon' => 'fa-history', 'url' => $addrow . 'ddoshistory'],
-            'nullroutes' => ['label' => 'Null Routes', 'icon' => 'fa-ban', 'url' => $addrow . 'nullroutes'],
-            'synclog' => ['label' => 'Sync Log', 'icon' => 'fa-list', 'url' => $addrow . 'synclog'],
+            'pendingorders' => ['label' => 'Pending Orders', 'icon' => 'bi-hourglass-split', 'url' => $addrow . 'pendingorders'],
+            'servers' => ['label' => 'Servers', 'icon' => 'bi-hdd-rack', 'url' => $addrow . 'servers'],
+            'catalog' => ['label' => 'Catalog', 'icon' => 'bi-box-seam', 'url' => $addrow . 'catalog'],
+            'customers' => ['label' => 'Customers', 'icon' => 'bi-people', 'url' => $addrow . 'customers'],
+            'ddosprofiles' => ['label' => 'DDoS Profiles', 'icon' => 'bi-shield-check', 'url' => $addrow . 'ddosprofiles'],
+            'ddoshistory' => ['label' => 'DDoS History', 'icon' => 'bi-clock-history', 'url' => $addrow . 'ddoshistory'],
+            'nullroutes' => ['label' => 'Null Routes', 'icon' => 'bi-slash-circle', 'url' => $addrow . 'nullroutes'],
+            'synclog' => ['label' => 'Sync Log', 'icon' => 'bi-list-ul', 'url' => $addrow . 'synclog'],
         ];
 
-        $html = '<div class="rs-tabs">';
+        $html = '<div class="rs-nav"><ul class="nav nav-tabs-custom border-0 mb-0" role="tablist">';
         foreach ($tabs as $key => $tab) {
-            $cls = ($key === $active) ? ' class="active"' : '';
-            $html .= '<a href="' . htmlspecialchars($tab['url']) . '"' . $cls . '>'
-                . '<i class="fas ' . $tab['icon'] . '"></i> ' . htmlspecialchars($tab['label']) . '</a>';
+            $html .= '<li class="nav-item">'
+                . '<a class="nav-link' . ($key === $active ? ' active' : '') . '"'
+                . ' href="' . htmlspecialchars($tab['url'], ENT_QUOTES, 'UTF-8') . '">'
+                . '<i class="bi ' . $tab['icon'] . '"></i> '
+                . htmlspecialchars($tab['label'], ENT_QUOTES, 'UTF-8')
+                . '</a></li>';
         }
-        $html .= '</div>';
+        $html .= '</ul></div>';
 
         return $html;
     }
@@ -3101,99 +3117,59 @@ class Reliablesite extends Module
     }
 
     /**
-     * Wraps content in the scoped style shell so every page shares one modern,
-     * theme-agnostic look without per-view markup changes.
+     * Builds a web path to one of this module's view assets. WEBDIR-relative so
+     * it resolves correctly under subdirectory installs and index.php routing.
+     *
+     * @param string $file Path relative to views/default/
+     * @return string
+     */
+    private function assetUri($file)
+    {
+        return WEBDIR . 'components/modules/reliablesite/views/default/' . $file;
+    }
+
+    /**
+     * Emits an idempotent <link> for a module stylesheet.
+     *
+     * Modules have no controller, so they cannot use the Css helper. Blesta's
+     * own Widget::setStyleSheet() writes an unguarded <link>, which would be
+     * duplicated because wrap() can run more than once per page - so this
+     * appends via JS with a data-rs-style guard instead.
+     *
+     * @param string $file Path relative to views/default/
+     * @return string
+     */
+    private function styleTag($file)
+    {
+        $href = $this->assetUri($file);
+
+        return '<script type="text/javascript">(function(){'
+            . 'var h=' . json_encode($href) . ';'
+            . 'if(document.querySelector(\'link[data-rs-style="\'+h+\'"]\'))return;'
+            . 'var l=document.createElement("link");'
+            . 'l.rel="stylesheet";l.type="text/css";l.media="screen";'
+            . 'l.href=h;l.setAttribute("data-rs-style",h);'
+            . 'document.head.appendChild(l);})();</script>';
+    }
+
+    /**
+     * Wraps content in the scoped module shell.
+     *
+     * Admin gets the Paradigm sheet (Bootstrap 5, driven entirely by Paradigm's
+     * CSS custom properties, so light/dark follows <html data-theme> with no
+     * JS). Client gets the Allure sheet (Bootstrap 4, data-theme-mode).
+     *
+     * Neither emits colours inline any more, and neither restyles core
+     * components - the surrounding theme owns .card, .table, .btn and friends.
      *
      * @param string $html
+     * @param bool $admin Whether this is an admin-facing screen
      * @return string
      */
     private function wrap($html, $admin = true)
     {
-        $cls = $admin ? 'rs-module rs-admin' : 'rs-module rs-client';
-
-        return $this->moduleStyles() . '<div class="' . $cls . '">' . $html . '</div>';
-    }
-
-    /**
-     * Scoped stylesheet shared by all module pages (admin + client). Everything
-     * is namespaced under .rs-module so it can't leak into the rest of Blesta.
-     *
-     * @return string
-     */
-    private function moduleStyles()
-    {
-        return '<style>'
-            . '.rs-module{color:#1f2937;}'
-            . '.rs-module .pad{padding:16px;}'
-            . '.rs-module .rs-help{display:block;color:#6b7280;font-size:12px;margin-top:4px;}'
-            . '.rs-module .title_row{padding:11px 16px;border-bottom:1px solid #e5e7eb;background:#fafafa;margin-bottom:2px;}'
-            . '.rs-module .title_row.first{border-top:0;}'
-            . '.rs-module .title_row h3{margin:0;font-size:13px;font-weight:600;color:#374151;}'
-            . '.rs-module .card{border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:16px;background:#fff;}'
-            . '.rs-module .card-header{font-weight:600;font-size:14px;padding:12px 16px;border-bottom:1px solid #e5e7eb;background:#fafafa;border-radius:10px 10px 0 0;}'
-            . '.rs-module .card-body{padding:16px;}'
-            // Tab bars (admin .rs-tabs + client .nav-pills)
-            . '.rs-module .rs-tabs{display:flex;flex-wrap:wrap;gap:2px;margin-bottom:18px;border-bottom:1px solid #e5e7eb;}'
-            . '.rs-module .rs-tabs a{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;font-size:13px;font-weight:500;color:#4b5563;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .12s,border-color .12s,background .12s;}'
-            . '.rs-module .rs-tabs a:hover{color:#111827;background:#f9fafb;}'
-            . '.rs-module .rs-tabs a.active{color:#2563eb;border-bottom-color:#2563eb;font-weight:600;}'
-            . '.rs-module .nav-pills{display:flex;flex-wrap:wrap;gap:4px;list-style:none;padding:0;margin:0 0 18px;border-bottom:1px solid #e5e7eb;}'
-            . '.rs-module .nav-pills .nav-link{display:block;padding:8px 13px;font-size:13px;font-weight:500;color:#4b5563;text-decoration:none;border-radius:6px 6px 0 0;border-bottom:2px solid transparent;margin-bottom:-1px;}'
-            . '.rs-module .nav-pills .nav-link:hover{color:#111827;background:#f9fafb;}'
-            . '.rs-module .nav-pills .nav-link.active{color:#2563eb;border-bottom-color:#2563eb;background:transparent;font-weight:600;}'
-            // Tables
-            . '.rs-module table.table{width:100%;border-collapse:collapse;margin:0;font-size:13px;}'
-            . '.rs-module table.table td{padding:10px 12px;border-bottom:1px solid #eef0f2;vertical-align:middle;}'
-            . '.rs-module table.table tr.heading_row td,.rs-module table.table th{background:#f9fafb;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:#6b7280;border-bottom:1px solid #e5e7eb;}'
-            . '.rs-module table.table tr:hover td{background:#fafbfc;}'
-            // Alerts
-            . '.rs-module .alert{border-radius:8px;padding:11px 14px;margin-bottom:14px;border:1px solid transparent;font-size:13px;}'
-            . '.rs-module .alert-success{background:#ecfdf5;border-color:#a7f3d0;color:#065f46;}'
-            . '.rs-module .alert-danger{background:#fef2f2;border-color:#fecaca;color:#991b1b;}'
-            . '.rs-module .alert-warning{background:#fffbeb;border-color:#fde68a;color:#92400e;}'
-            . '.rs-module .alert-info{background:#eff6ff;border-color:#bfdbfe;color:#1e40af;}'
-            // Buttons (keep Blesta semantics, refine shape)
-            . '.rs-module .btn{border-radius:7px;font-size:13px;padding:7px 14px;font-weight:500;line-height:1.2;transition:filter .12s;}'
-            . '.rs-module .btn:hover{filter:brightness(.96);}'
-            . '.rs-module .btn-sm{padding:5px 11px;font-size:12px;}'
-            . '.rs-module .btn-primary{background:#2563eb;border-color:#2563eb;color:#fff;}'
-            . '.rs-module .btn-danger{background:#dc2626;border-color:#dc2626;color:#fff;}'
-            . '.rs-module .btn-default{background:#fff;border:1px solid #d1d5db;color:#374151;}'
-            // Badges / labels
-            . '.rs-module .label,.rs-module .badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:600;line-height:1.4;}'
-            . '.rs-module .label-success,.rs-module .badge-success{background:#dcfce7;color:#166534;}'
-            . '.rs-module .label-warning,.rs-module .badge-warning{background:#fef3c7;color:#92400e;}'
-            . '.rs-module .label-default,.rs-module .badge-secondary{background:#f3f4f6;color:#4b5563;}'
-            . '.rs-module .label-info,.rs-module .badge-info{background:#dbeafe;color:#1e40af;}'
-            // Admin is always light mode: use vibrant, high-contrast solid colours so
-            // status badges (greens/greys in the catalog, etc.) are never washed out.
-            . '.rs-admin .label-success,.rs-admin .badge-success{background:#16a34a;color:#fff;}'
-            . '.rs-admin .label-warning,.rs-admin .badge-warning{background:#d97706;color:#fff;}'
-            . '.rs-admin .label-default,.rs-admin .badge-secondary{background:#475569;color:#fff;}'
-            . '.rs-admin .label-info,.rs-admin .badge-info{background:#2563eb;color:#fff;}'
-            . '.rs-admin .label-danger,.rs-admin .badge-danger{background:#dc2626;color:#fff;}'
-            . '.rs-admin .text-muted{color:#52606d;}'
-            . '.rs-admin table.table tr.heading_row td,.rs-admin table.table th{color:#475569;}'
-            . '.rs-admin table.table td{border-bottom-color:#e5e7eb;color:#1f2937;}'
-            // Forms
-            . '.rs-module .form-control{border:1px solid #d1d5db;border-radius:7px;padding:8px 11px;font-size:13px;background:#fff;}'
-            . '.rs-module .form-control:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12);outline:none;}'
-            . '.rs-module .form-group{margin-bottom:13px;}'
-            . '.rs-module label{font-weight:500;font-size:13px;color:#374151;}'
-            // Reusable bits used by a few views
-            . '.rs-module .rs-filter{background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;}'
-            . '.rs-module .rs-stat{border:1px solid #e5e7eb;border-radius:10px;padding:18px;text-align:center;background:#fff;transition:box-shadow .12s,transform .12s;}'
-            . '.rs-module a:hover .rs-stat{box-shadow:0 4px 14px rgba(0,0,0,.07);transform:translateY(-1px);}'
-            . '.rs-module .rs-stat-num{font-size:28px;font-weight:700;color:#2563eb;line-height:1.1;}'
-            . '.rs-module .rs-stat-label{color:#6b7280;margin-top:6px;font-size:13px;}'
-            . '.rs-module .button_row{padding:14px 16px;border-top:1px solid #e5e7eb;background:#fafafa;}'
-            . '.rs-module .pagination_row{margin-top:14px;display:flex;gap:6px;}'
-            // Inline action rows: keep multiple single-button <form>s side by side
-            // (a <form> is block-level by default, which would stack them vertically).
-            . '.rs-module .rs-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}'
-            . '.rs-module .rs-actions form{display:inline-block;margin:0;}'
-            . '.rs-module h4,.rs-module h5{color:#111827;}'
-            . '.rs-module .text-muted{color:#6b7280;}'
-            . '</style>';
+        return $admin
+            ? $this->styleTag('css/rs-admin.css') . '<div class="rs-module rs-admin">' . $html . '</div>'
+            : $this->styleTag('css/rs-client.css') . '<div class="rs-module rs-client">' . $html . '</div>';
     }
 }

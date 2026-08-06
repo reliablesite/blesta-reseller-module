@@ -27,27 +27,27 @@ $this->Widget->create('Overview' . ($account_name !== '' ? ' (' . $this->Html->s
 ?>
 <div class="inner">
     <div class="pad">
-        <div style="display:flex;flex-wrap:wrap;gap:12px;">
-            <a href="<?php echo $this->Html->safe($links['pending']); ?>" style="flex:1;min-width:170px;text-decoration:none;">
+        <div class="rs-stats">
+            <a href="<?php echo $this->Html->safe($links['pending']); ?>" class="text-decoration-none">
                 <div class="rs-stat">
-                    <div class="rs-stat-num" style="<?php echo ($stats['pending'] > 0 ? 'color:#d97706;' : ''); ?>"><?php echo (int) $stats['pending']; ?></div>
-                    <div class="rs-stat-label"><i class="fas fa-hourglass-half"></i> Pending Orders</div>
+                    <div class="rs-stat-num<?php echo ($stats['pending'] > 0 ? ' is-warning' : ''); ?>"><?php echo (int) $stats['pending']; ?></div>
+                    <div class="rs-stat-label"><i class="bi bi-hourglass-split"></i> Pending Orders</div>
                 </div>
             </a>
-            <a href="<?php echo $this->Html->safe($links['catalog']); ?>" style="flex:1;min-width:170px;text-decoration:none;">
+            <a href="<?php echo $this->Html->safe($links['catalog']); ?>" class="text-decoration-none">
                 <div class="rs-stat">
                     <div class="rs-stat-num"><?php echo (int) $stats['tracked']; ?></div>
-                    <div class="rs-stat-label"><i class="fas fa-box"></i> Tracked Products</div>
+                    <div class="rs-stat-label"><i class="bi bi-box-seam"></i> Tracked Products</div>
                 </div>
             </a>
-            <a href="<?php echo $this->Html->safe($links['catalog']); ?>" style="flex:1;min-width:170px;text-decoration:none;">
+            <a href="<?php echo $this->Html->safe($links['catalog']); ?>" class="text-decoration-none">
                 <div class="rs-stat">
-                    <div class="rs-stat-num" style="font-size:18px;color:#374151;margin-top:6px;"><?php echo $this->Html->safe($stats['last_sync']); ?></div>
-                    <div class="rs-stat-label"><i class="fas fa-sync"></i> Last Catalog Sync</div>
+                    <div class="rs-stat-num is-text"><?php echo $this->Html->safe($stats['last_sync']); ?></div>
+                    <div class="rs-stat-label"><i class="bi bi-arrow-repeat"></i> Last Catalog Sync</div>
                 </div>
             </a>
         </div>
-        <p style="margin-top:18px;" class="text-muted">Use the tabs above to manage pending orders, servers, the product catalog, customers, and DDoS protection.</p>
+        <p class="text-muted mt-3">Use the tabs above to manage pending orders, servers, the product catalog, customers, and DDoS protection.</p>
     </div>
 </div>
 <?php

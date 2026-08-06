@@ -23,7 +23,7 @@ $hasBlocks = !empty($server_blocks);
     <div class="card-body">
         <p class="text-muted">Apply a tuned mitigation profile to an entire subnet or a single IP on this server. Only profiles in your server's datacenter are shown.</p>
 
-        <div class="border rounded p-2 mb-3" style="background:#f7f7f9;">
+        <div class="border rounded p-2 mb-3 rs-summary">
             <span class="mr-3"><strong>Datacenter:</strong> <?php echo $this->Html->safe($datacenter_label !== '' ? $datacenter_label : '-'); ?>
                 <?php if (!empty($dcCodes)) { echo '<small class="text-muted">(' . $this->Html->safe(implode(', ', $dcCodes)) . ')</small>'; } ?>
             </span>
@@ -116,7 +116,7 @@ $hasBlocks = !empty($server_blocks);
                 <?php foreach ($protected as $entry) { ?>
                     <tr>
                         <td><?php echo $this->Html->safe($entry['profile_name']); ?></td>
-                        <td style="font-family:monospace;"><?php echo $this->Html->safe($entry['ip']); ?></td>
+                        <td class="rs-mono"><?php echo $this->Html->safe($entry['ip']); ?></td>
                         <td>
                             <?php $this->Form->create(); ?>
                             <input type="hidden" name="action" value="ddos_remove" />

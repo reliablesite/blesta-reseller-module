@@ -1,0 +1,74 @@
+/**
+ * ReliableSite module - Blesta 6 client area ("Allure") styles.
+ *
+ * The client portal was NOT rebuilt in Blesta 6: it is still Bootstrap 4.6.2
+ * with Font Awesome 5, and it switches themes via `<html data-theme-mode>`
+ * rather than the admin panel's `data-theme` / `data-bs-theme`.
+ *
+ * Allure exposes no CSS custom properties of its own, so this file declares a
+ * small set scoped to .rs-client and flips them on data-theme-mode. The dark
+ * values are taken from allure.min.css so module chrome matches the
+ * surrounding theme exactly.
+ *
+ * Deliberately absent: .card, .table, .btn*, .alert*, .badge*, .form-control.
+ * Allure themes all of those for both modes. The previous release overrode
+ * them with hardcoded light values (`.rs-module .card{background:#fff}`),
+ * which out-specified `[data-theme-mode="dark"] .card{background-color:#323232}`
+ * and left clients on dark mode looking at white cards with dark grey text on
+ * a black page. Leaving them alone is the fix.
+ */
+
+.rs-client {
+    --rs-surface: #f8f9fa;
+    --rs-border: rgba(0, 0, 0, .125);
+    --rs-text: #212121;
+    --rs-muted: #757575;
+    --rs-accent: #0d6efd;
+}
+
+[data-theme-mode="dark"] .rs-client {
+    --rs-surface: #323232;              /* allure .card background   */
+    --rs-border: rgba(255, 255, 255, .125);  /* allure .card border  */
+    --rs-text: #EEEEEE;                 /* allure body colour        */
+    --rs-muted: #BDBDBD;
+    --rs-accent: #4d9fff;
+}
+
+/* ------------------------------------------------------------------ *
+ * Module-specific primitives only
+ * ------------------------------------------------------------------ */
+
+.rs-client .rs-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    align-items: center;
+}
+
+/* A <form> is block-level, which would stack single-button action forms
+   vertically instead of side by side. */
+.rs-client .rs-actions form {
+    display: inline-block;
+    margin: 0;
+}
+
+.rs-client .rs-help {
+    display: block;
+    margin-top: .25rem;
+    font-size: .8125rem;
+    color: var(--rs-muted);
+}
+
+/* Replaces style="background:#f7f7f9" on the DDoS datacenter summary bar */
+.rs-client .rs-summary {
+    background: var(--rs-surface);
+}
+
+/* Replaces style="font-family:monospace" on IP / MAC cells */
+.rs-client .rs-mono {
+    font-family: monospace;
+}
+
+.rs-client .rs-chart {
+    min-height: 320px;
+}

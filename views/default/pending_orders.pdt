@@ -2,22 +2,6 @@
 $this->Widget->clear();
 $this->Widget->create($this->_('Reliablesite.pending.box_title', true));
 ?>
-<style>
-.rs-module .rs-order-badge{display:inline-block;padding:3px 8px;border-radius:6px;background:#ecfdf5;color:#065f46;font-size:12px;font-weight:600;border:1px solid #a7f3d0;}
-.rs-module .rs-order-badge small{display:block;font-weight:400;color:#047857;}
-.rs-module .rs-order-failed{color:#b91c1c;font-size:12px;margin-bottom:4px;}
-.rs-module .rs-help{display:block;color:#6b7280;font-size:12px;margin-top:4px;}
-.rs-modal-backdrop{position:fixed;inset:0;background:rgba(17,24,39,.5);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding-top:8vh;}
-.rs-modal{background:#fff;border-radius:12px;width:440px;max-width:92vw;box-shadow:0 20px 45px rgba(0,0,0,.25);overflow:hidden;}
-.rs-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #e5e7eb;background:#fafafa;}
-.rs-modal-head h3{margin:0;font-size:15px;font-weight:600;color:#111827;}
-.rs-modal-close{border:0;background:none;font-size:22px;line-height:1;color:#6b7280;cursor:pointer;}
-.rs-modal-body{padding:18px;}
-.rs-modal-body label{display:block;font-size:13px;font-weight:600;color:#374151;margin:12px 0 4px;}
-.rs-modal-body label:first-of-type{margin-top:0;}
-.rs-modal-product{margin:0 0 6px;font-size:13px;color:#4b5563;}
-.rs-modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
-</style>
 <div class="inner">
     <?php
     if (!empty($notice)) {
@@ -78,8 +62,7 @@ $this->Widget->create($this->_('Reliablesite.pending.box_title', true));
                             <button type="button" class="btn btn-secondary btn-sm rs-order-btn"
                                 data-service-id="<?php echo $this->Html->safe($sid); ?>"
                                 data-service-number="<?php echo $this->Html->safe($svc_number); ?>"
-                                data-customer="<?php echo $this->Html->safe($customer); ?>"
-                                onclick="rsOpenOrder(this);"><?php echo $this->Html->safe($btnLabel); ?></button>
+                                data-customer="<?php echo $this->Html->safe($customer); ?>"><?php echo $this->Html->safe($btnLabel); ?></button>
                             <?php
                         }
                         ?>
@@ -115,61 +98,79 @@ $this->Widget->create($this->_('Reliablesite.pending.box_title', true));
         </table>
 
         <!-- Shared Create Order modal -->
-        <div id="rsOrderModal" class="rs-modal-backdrop" style="display:none;">
-            <div class="rs-modal">
-                <div class="rs-modal-head">
-                    <h3><?php $this->_('Reliablesite.order.modal_title'); ?></h3>
-                    <button type="button" class="rs-modal-close" onclick="rsCloseOrder();">&times;</button>
+        <div class="modal fade" id="rsOrderModal" tabindex="-1" aria-labelledby="rsOrderModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form method="get">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="rsOrderModalLabel"><?php $this->_('Reliablesite.order.modal_title'); ?></h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" name="scr" value="pendingorders" />
+                            <input type="hidden" name="action" value="order" />
+                            <input type="hidden" name="service_id" id="rsOrderServiceId" value="" />
+
+                            <p class="text-muted small" id="rsOrderProduct"></p>
+
+                            <div class="mb-3">
+                                <label for="rsOrderHostname" class="form-label"><?php $this->_('Reliablesite.order.hostname'); ?></label>
+                                <input type="text" name="hostname" id="rsOrderHostname" class="form-control" required placeholder="server.example.com" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="rsOrderPayment" class="form-label"><?php $this->_('Reliablesite.order.payment_method'); ?></label>
+                                <?php if (!empty($payment_methods)) { ?>
+                                    <select name="payment_method" id="rsOrderPayment" class="form-select">
+                                        <?php foreach ($payment_methods as $module => $label) { ?>
+                                            <option value="<?php echo $this->Html->safe($module); ?>"><?php echo $this->Html->safe($label); ?></option>
+                                        <?php } ?>
+                                    </select>
+                                <?php } else { ?>
+                                    <input type="text" name="payment_method" id="rsOrderPayment" class="form-control" placeholder="paypal" />
+                                    <span class="rs-help"><?php $this->_('Reliablesite.order.payment_method.fallback'); ?></span>
+                                <?php } ?>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="rsOrderPromo" class="form-label"><?php $this->_('Reliablesite.order.promo_code'); ?></label>
+                                <input type="text" name="promo_code" id="rsOrderPromo" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?php $this->_('Reliablesite.order.cancel_btn'); ?></button>
+                            <button type="submit" class="btn btn-primary"><?php $this->_('Reliablesite.order.submit_btn'); ?></button>
+                        </div>
+                    </form>
                 </div>
-                <form method="get" class="rs-modal-body">
-                    <input type="hidden" name="scr" value="pendingorders" />
-                    <input type="hidden" name="action" value="order" />
-                    <input type="hidden" name="service_id" id="rsOrderServiceId" value="" />
-                    <p class="rs-modal-product" id="rsOrderProduct"></p>
-                    <label for="rsOrderHostname"><?php $this->_('Reliablesite.order.hostname'); ?></label>
-                    <input type="text" name="hostname" id="rsOrderHostname" class="form-control" required placeholder="server.example.com" />
-                    <label for="rsOrderPayment"><?php $this->_('Reliablesite.order.payment_method'); ?></label>
-                    <?php if (!empty($payment_methods)) { ?>
-                        <select name="payment_method" id="rsOrderPayment" class="form-control">
-                            <?php foreach ($payment_methods as $module => $label) { ?>
-                                <option value="<?php echo $this->Html->safe($module); ?>"><?php echo $this->Html->safe($label); ?></option>
-                            <?php } ?>
-                        </select>
-                    <?php } else { ?>
-                        <input type="text" name="payment_method" id="rsOrderPayment" class="form-control" placeholder="paypal" />
-                        <span class="rs-help"><?php $this->_('Reliablesite.order.payment_method.fallback'); ?></span>
-                    <?php } ?>
-                    <label for="rsOrderPromo"><?php $this->_('Reliablesite.order.promo_code'); ?></label>
-                    <input type="text" name="promo_code" id="rsOrderPromo" class="form-control" />
-                    <div class="rs-modal-foot">
-                        <button type="button" class="btn btn-default" onclick="rsCloseOrder();"><?php $this->_('Reliablesite.order.cancel_btn'); ?></button>
-                        <button type="submit" class="btn btn-primary"><?php $this->_('Reliablesite.order.submit_btn'); ?></button>
-                    </div>
-                </form>
             </div>
         </div>
-        <script>
-        function rsOpenOrder(btn) {
-            var modal = document.getElementById('rsOrderModal');
-            document.getElementById('rsOrderServiceId').value = btn.getAttribute('data-service-id') || '';
-            var num = btn.getAttribute('data-service-number') || '';
-            var cust = btn.getAttribute('data-customer') || '';
-            document.getElementById('rsOrderProduct').textContent = 'Service #' + num + (cust ? ' — ' + cust : '');
-            document.getElementById('rsOrderHostname').value = '';
-            document.getElementById('rsOrderPromo').value = '';
-            modal.style.display = 'flex';
-            document.getElementById('rsOrderHostname').focus();
-        }
-        function rsCloseOrder() {
-            document.getElementById('rsOrderModal').style.display = 'none';
-        }
+        <script type="text/javascript">
         (function () {
-            var modal = document.getElementById('rsOrderModal');
-            if (modal) {
-                modal.addEventListener('click', function (e) {
-                    if (e.target === modal) { rsCloseOrder(); }
+            var el = document.getElementById('rsOrderModal');
+            if (!el || typeof bootstrap === 'undefined') { return; }
+
+            var modal = new bootstrap.Modal(el);
+
+            document.querySelectorAll('.rs-order-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var num  = btn.getAttribute('data-service-number') || '';
+                    var cust = btn.getAttribute('data-customer') || '';
+
+                    el.querySelector('#rsOrderServiceId').value = btn.getAttribute('data-service-id') || '';
+                    el.querySelector('#rsOrderProduct').textContent =
+                        'Service #' + num + (cust ? ' \u2014 ' + cust : '');
+                    el.querySelector('#rsOrderHostname').value = '';
+                    el.querySelector('#rsOrderPromo').value = '';
+
+                    modal.show();
                 });
-            }
+            });
+
+            // Bootstrap manages focus, but only once the dialog is actually shown
+            el.addEventListener('shown.bs.modal', function () {
+                el.querySelector('#rsOrderHostname').focus();
+            });
         })();
         </script>
         <?php
