@@ -1,0 +1,70 @@
+<?php
+$nav = ['overview' => 'Overview', 'os' => 'Reinstall OS', 'kvm' => 'KVM', 'bandwidth' => 'Bandwidth', 'backups' => 'Backups', 'rdns' => 'Reverse DNS', 'mac' => 'MAC', 'ddos' => 'DDoS'];
+?>
+<ul class="nav nav-pills mb-3">
+    <?php foreach ($nav as $key => $label) {
+        $active = ($page === $key) ? ' active' : ''; ?>
+        <li class="nav-item"><a class="nav-link<?php echo $active; ?>" href="?p=<?php echo $key; ?>"><?php echo $label; ?></a></li>
+    <?php } ?>
+</ul>
+<?php
+if (!empty($notice)) {
+    echo '<div class="alert alert-success">' . $this->Html->safe($notice) . '</div>';
+}
+if (!empty($error)) {
+    echo '<div class="alert alert-danger">' . $this->Html->safe($error) . '</div>';
+}
+$get = function ($key) use ($server) {
+    return isset($server[$key]) ? $server[$key] : '';
+};
+$primaryIp = '';
+if (!empty($ip_blocks) && isset($ip_blocks[0]['ipDescription'])) {
+    $primaryIp = $ip_blocks[0]['ipDescription'];
+}
+$used = (float) $get('bandwidthUsed');
+$allowed = (float) $get('bandwidthAllowed');
+$pct = $allowed > 0 ? min(100, round($used / $allowed * 100)) : 0;
+?>
+<div class="card mb-3">
+    <div class="card-header"><strong><?php echo $this->Html->safe($get('serverLabel')); ?></strong>
+        <span class="float-right badge badge-info"><?php echo $this->Html->safe($get('status')); ?></span>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-sm">
+                    <tr><td>CPU</td><td><?php echo $this->Html->safe($get('cpuName')); ?></td></tr>
+                    <tr><td>Memory</td><td><?php echo $this->Html->safe(trim($get('memorySize') . ' ' . $get('memoryType'))); ?></td></tr>
+                    <tr><td>RAID</td><td><?php echo $this->Html->safe($get('raidName')); ?></td></tr>
+                    <tr><td>OS</td><td><?php echo $this->Html->safe($get('operatingSystem')); ?></td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <table class="table table-sm">
+                    <tr><td>Datacenter</td><td><?php echo $this->Html->safe($get('dataCenterLabel')); ?></td></tr>
+                    <tr><td>Primary IP</td><td><?php echo $this->Html->safe($primaryIp); ?></td></tr>
+                    <tr><td>Port speed</td><td><?php echo $this->Html->safe($get('portSpeed')); ?></td></tr>
+                    <tr><td>Server MAC</td><td><?php echo $this->Html->safe($get('serverMac')); ?></td></tr>
+                </table>
+            </div>
+        </div>
+        <?php if ($allowed > 0) { ?>
+            <div class="mt-2">
+                <small>Bandwidth: <?php echo $this->Html->safe($used); ?> / <?php echo $this->Html->safe($allowed); ?> GB</small>
+                <div class="progress"><div class="progress-bar" role="progressbar" style="width: <?php echo $pct; ?>%;"><?php echo $pct; ?>%</div></div>
+            </div>
+        <?php } ?>
+    </div>
+    <div class="card-footer">
+        <div class="rs-actions">
+            <?php $this->Form->create(); ?>
+            <input type="hidden" name="action" value="power_on" />
+            <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-play"></i> Power On</button>
+            <?php $this->Form->end(); ?>
+            <?php $this->Form->create(); ?>
+            <input type="hidden" name="action" value="power_off" />
+            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Power off the server?');"><i class="fas fa-power-off"></i> Power Off</button>
+            <?php $this->Form->end(); ?>
+        </div>
+    </div>
+</div>

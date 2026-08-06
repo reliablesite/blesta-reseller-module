@@ -1,0 +1,244 @@
+<?php
+$this->Widget->clear();
+$this->Widget->create($this->_('Reliablesite.askbrian.box_title', true));
+?>
+<style>
+.rs-module .rs-brian{display:flex;flex-direction:column;height:560px;max-height:70vh;border:1px solid #e5e7eb;border-radius:10px;background:#fff;overflow:hidden;}
+.rs-module .rs-brian-head{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid #e5e7eb;background:#fafafa;}
+.rs-module .rs-brian-head .rs-brian-avatar{width:32px;height:32px;border-radius:50%;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;flex:0 0 auto;}
+.rs-module .rs-brian-head .rs-brian-who{font-weight:600;font-size:14px;color:#111827;line-height:1.2;}
+.rs-module .rs-brian-head .rs-brian-sub{font-size:12px;color:#6b7280;}
+.rs-module .rs-brian-head .rs-brian-new{margin-left:auto;}
+.rs-module .rs-brian-log{flex:1;overflow-y:auto;padding:18px 16px;background:#f9fafb;}
+.rs-module .rs-msg{display:flex;gap:10px;margin-bottom:14px;align-items:flex-start;}
+.rs-module .rs-msg .rs-bub{max-width:78%;padding:10px 13px;border-radius:12px;font-size:13.5px;line-height:1.5;word-wrap:break-word;overflow-wrap:anywhere;}
+.rs-module .rs-msg-bot .rs-ava{width:28px;height:28px;border-radius:50%;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;flex:0 0 auto;}
+.rs-module .rs-msg-bot .rs-bub{background:#fff;border:1px solid #e5e7eb;color:#1f2937;border-top-left-radius:3px;}
+.rs-module .rs-msg-user{flex-direction:row-reverse;}
+.rs-module .rs-msg-user .rs-bub{background:#2563eb;color:#fff;border-top-right-radius:3px;}
+.rs-module .rs-msg-user .rs-ava{width:28px;height:28px;border-radius:50%;background:#e5e7eb;color:#4b5563;display:flex;align-items:center;justify-content:center;font-size:13px;flex:0 0 auto;}
+.rs-module .rs-bub p{margin:0 0 8px;}
+.rs-module .rs-bub p:last-child{margin-bottom:0;}
+.rs-module .rs-bub ul{margin:6px 0;padding-left:20px;}
+.rs-module .rs-bub code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:4px;font-size:12px;}
+.rs-module .rs-msg-user .rs-bub a{color:#fff;text-decoration:underline;}
+.rs-module .rs-bub a{color:#2563eb;}
+.rs-module .rs-typing span{display:inline-block;width:6px;height:6px;margin:0 1px;border-radius:50%;background:#9ca3af;animation:rsblink 1.2s infinite both;}
+.rs-module .rs-typing span:nth-child(2){animation-delay:.2s;}
+.rs-module .rs-typing span:nth-child(3){animation-delay:.4s;}
+@keyframes rsblink{0%,80%,100%{opacity:.25;}40%{opacity:1;}}
+.rs-module .rs-brian-foot{border-top:1px solid #e5e7eb;padding:10px 12px;background:#fff;}
+.rs-module .rs-brian-form{display:flex;gap:8px;align-items:flex-end;}
+.rs-module .rs-brian-input{flex:1;resize:none;min-height:40px;max-height:140px;border:1px solid #d1d5db;border-radius:9px;padding:9px 12px;font-size:13.5px;font-family:inherit;line-height:1.4;}
+.rs-module .rs-brian-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12);outline:none;}
+.rs-module .rs-brian-send{height:40px;}
+.rs-module .rs-brian-hint{font-size:11px;color:#9ca3af;margin-top:6px;}
+.rs-module .rs-suggests{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;}
+.rs-module .rs-suggests button{background:#fff;border:1px solid #d1d5db;border-radius:999px;padding:6px 12px;font-size:12px;color:#374151;cursor:pointer;}
+.rs-module .rs-suggests button:hover{border-color:#2563eb;color:#2563eb;}
+</style>
+<div class="inner">
+    <?php if (empty($has_key)) { ?>
+        <div class="alert alert-warning">
+            No ReliableSite API key is configured yet. Add your reseller API key in
+            <strong>Settings</strong> before using the assistant.
+        </div>
+    <?php } ?>
+
+    <div class="rs-brian" id="rs-brian">
+        <div class="rs-brian-head">
+            <div class="rs-brian-avatar"><i class="fas fa-robot"></i></div>
+            <div>
+                <div class="rs-brian-who">Brian &middot; Sales Engineer</div>
+                <div class="rs-brian-sub">AI assistant for ReliableSite reseller sales &amp; product questions</div>
+            </div>
+            <button type="button" class="btn btn-default btn-sm rs-brian-new" id="rs-brian-new">
+                <i class="fas fa-plus"></i> New chat
+            </button>
+        </div>
+
+        <div class="rs-brian-log" id="rs-brian-log">
+            <div class="rs-msg rs-msg-bot">
+                <div class="rs-ava"><i class="fas fa-robot"></i></div>
+                <div class="rs-bub">
+                    <p>Hi! I'm Brian, your ReliableSite sales engineer. Ask me about server
+                    recommendations, specs, pricing, DDoS protection, or anything else to help
+                    close a sale.</p>
+                    <div class="rs-suggests">
+                        <button type="button" data-q="What server do you recommend for a Minecraft server with 200 players?">Minecraft server sizing</button>
+                        <button type="button" data-q="What DDoS protection options are available?">DDoS protection</button>
+                        <button type="button" data-q="What are your most popular dedicated server plans?">Popular plans</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="rs-brian-foot">
+            <form class="rs-brian-form" id="rs-brian-form" autocomplete="off">
+                <textarea class="rs-brian-input" id="rs-brian-input" rows="1"
+                    placeholder="Ask Brian anything&hellip;" maxlength="2000"<?php echo empty($has_key) ? ' disabled' : ''; ?>></textarea>
+                <button type="submit" class="btn btn-primary rs-brian-send" id="rs-brian-send"<?php echo empty($has_key) ? ' disabled' : ''; ?>>
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+            <div class="rs-brian-hint">Enter to send &middot; Shift+Enter for a new line</div>
+        </div>
+    </div>
+</div>
+<script>
+(function () {
+    var AJAX_URL = <?php echo json_encode($ajax_url); ?>;
+    var BASE_SESSION = <?php echo json_encode($session_id); ?>;
+    var ASSIGN_KEY = 'rs_brian_assignment_id';
+
+    var log = document.getElementById('rs-brian-log');
+    var form = document.getElementById('rs-brian-form');
+    var input = document.getElementById('rs-brian-input');
+    var sendBtn = document.getElementById('rs-brian-send');
+    var newBtn = document.getElementById('rs-brian-new');
+    if (!log || !form) { return; }
+
+    var sessionId = BASE_SESSION;
+    var busy = false;
+
+    function getAssignmentId() {
+        try { return window.localStorage.getItem(ASSIGN_KEY) || ''; } catch (e) { return ''; }
+    }
+    function setAssignmentId(id) {
+        if (!id) { return; }
+        try { window.localStorage.setItem(ASSIGN_KEY, id); } catch (e) {}
+    }
+
+    function escapeHtml(s) {
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    // Minimal, safe Markdown-lite renderer (input is HTML-escaped first).
+    function renderMarkdown(text) {
+        var safe = escapeHtml(text);
+        // Links [label](http...url) - only http/https are allowed.
+        safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, function (m, label, url) {
+            return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + label + '</a>';
+        });
+        // Bare http(s) URLs not already inside an anchor.
+        safe = safe.replace(/(^|[\s(])((https?:\/\/)[^\s<]+)/g, function (m, pre, url) {
+            return pre + '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + url + '</a>';
+        });
+        safe = safe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        safe = safe.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+        // Turn lines into paragraphs / bullet lists.
+        var lines = safe.split(/\n/);
+        var html = '', inList = false;
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim();
+            var bullet = line.match(/^[-*]\s+(.*)$/);
+            if (bullet) {
+                if (!inList) { html += '<ul>'; inList = true; }
+                html += '<li>' + bullet[1] + '</li>';
+            } else {
+                if (inList) { html += '</ul>'; inList = false; }
+                if (line !== '') { html += '<p>' + line + '</p>'; }
+            }
+        }
+        if (inList) { html += '</ul>'; }
+        return html || '<p></p>';
+    }
+
+    function addMessage(role, html) {
+        var wrap = document.createElement('div');
+        wrap.className = 'rs-msg ' + (role === 'user' ? 'rs-msg-user' : 'rs-msg-bot');
+        var ava = document.createElement('div');
+        ava.className = 'rs-ava';
+        ava.innerHTML = role === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
+        var bub = document.createElement('div');
+        bub.className = 'rs-bub';
+        bub.innerHTML = html;
+        wrap.appendChild(ava);
+        wrap.appendChild(bub);
+        log.appendChild(wrap);
+        log.scrollTop = log.scrollHeight;
+        return bub;
+    }
+
+    function showTyping() {
+        var bub = addMessage('bot', '<div class="rs-typing"><span></span><span></span><span></span></div>');
+        return bub.parentNode;
+    }
+
+    function setBusy(state) {
+        busy = state;
+        if (sendBtn) { sendBtn.disabled = state; }
+        input.disabled = state;
+        if (!state) { input.focus(); }
+    }
+
+    function send(text) {
+        text = (text || '').trim();
+        if (!text || busy) { return; }
+
+        addMessage('user', '<p>' + escapeHtml(text).replace(/\n/g, '<br>') + '</p>');
+        input.value = '';
+        autosize();
+        setBusy(true);
+        var typing = showTyping();
+
+        var url = AJAX_URL
+            + '&message=' + encodeURIComponent(text)
+            + '&sessionId=' + encodeURIComponent(sessionId)
+            + '&assignmentId=' + encodeURIComponent(getAssignmentId());
+
+        fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (typing && typing.parentNode) { typing.parentNode.removeChild(typing); }
+                if (data && data.success) {
+                    if (data.sessionId) { sessionId = data.sessionId; }
+                    if (data.assignmentId) { setAssignmentId(data.assignmentId); }
+                    addMessage('bot', renderMarkdown(data.response || ''));
+                } else {
+                    var msg = (data && data.error) ? data.error : 'Something went wrong. Please try again.';
+                    addMessage('bot', '<p style="color:#b91c1c;">' + escapeHtml(msg) + '</p>');
+                }
+            })
+            .catch(function () {
+                if (typing && typing.parentNode) { typing.parentNode.removeChild(typing); }
+                addMessage('bot', '<p style="color:#b91c1c;">Could not reach the assistant. Please try again.</p>');
+            })
+            .then(function () { setBusy(false); });
+    }
+
+    function autosize() {
+        input.style.height = 'auto';
+        input.style.height = Math.min(input.scrollHeight, 140) + 'px';
+    }
+
+    form.addEventListener('submit', function (e) { e.preventDefault(); send(input.value); });
+    input.addEventListener('input', autosize);
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input.value); }
+    });
+
+    log.addEventListener('click', function (e) {
+        var t = e.target;
+        if (t && t.tagName === 'BUTTON' && t.getAttribute('data-q')) {
+            send(t.getAttribute('data-q'));
+        }
+    });
+
+    if (newBtn) {
+        newBtn.addEventListener('click', function () {
+            // Start a fresh conversation while preserving the source-identifying prefix.
+            sessionId = BASE_SESSION + '-' + Date.now();
+            var greeting = log.querySelector('.rs-msg-bot');
+            log.innerHTML = '';
+            if (greeting) { log.appendChild(greeting); }
+            input.focus();
+        });
+    }
+})();
+</script>
+<?php
+$this->Widget->end();

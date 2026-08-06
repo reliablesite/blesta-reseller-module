@@ -1,0 +1,27 @@
+{
+    "version": "2.2.0",
+    "name": "Reliablesite.name",
+    "description": "Reliablesite.description",
+    "authors": [
+        {
+            "name": "ReliableSite.Net",
+            "url": "https://www.reliablesite.net"
+        }
+    ],
+    "package": {
+        "name_key": "reliablesite_server_label"
+    },
+    "service": {
+        "name_key": "reliablesite_server_label"
+    },
+    "module": {
+        "row": "Reliablesite.module_row",
+        "rows": "Reliablesite.module_row_plural",
+        "row_key": "account_name"
+    },
+    "email_tags": {
+        "module": ["account_name"],
+        "package": ["reliablesite_product_id"],
+        "service": ["reliablesite_username", "reliablesite_server_id", "reliablesite_server_label"]
+    }
+}

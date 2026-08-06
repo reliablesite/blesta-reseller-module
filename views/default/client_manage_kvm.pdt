@@ -1,0 +1,213 @@
+<script src="<?php echo $this->Html->safe($this->view_dir . 'js/sweetalert.min.js');?>"></script>
+<?php
+if(!empty($error)){
+
+?>
+    <section class="error_section">
+        <article class="error_box">
+            <div class="alert alert-danger alert-dismissable">
+                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
+                <p> <?php echo $error; ?> </p>
+            </div>
+        </article>
+</section>
+<?php
+} 
+else{
+    
+        $this->Form->create('', array('id'=> 'frmManageKVM'));
+        $this->Form->fieldHidden("serverId", $rsServerId);
+        $this->Form->fieldHidden("remoteIP", $yourIP);
+        ?>
+        <div class="panel-pad">
+            <div class="col-md-12">
+                <h3><?php $this->_("Reliablesite.tab_ManageKVM"); ?></h3>
+                <div class="row">
+                    <div class="col-md-12 form-group">
+                        <section class="error_section">
+                            <article class="error_box">
+                                <div class="alert alert-warning">
+                                    <p><?php $this->_("Reliablesite.client_manage_kvm.warning"); ?></p>
+                                </div>
+                            </article>
+                        </section>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 service-info">
+                        <label><?php $this->_("Reliablesite.client_manage_kvm.your_ip"); ?></label>
+                        <h4>
+                            <?php 
+                            echo (isset($yourIP) ? $this->Html->safe($yourIP) : null); 
+                            ?>
+                        </h4>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 service-info">
+                        <label><?php $this->_("Reliablesite.client_manage_kvm.ipmi_access"); ?></label>
+                        <h4>
+                            <?php
+                            
+                            if($kvmDetails['accessEnabled'] == true){
+                                $this->_("Reliablesite.client_manage_kvm.ipmi_access.enabled");
+                                $this->Form->fieldSubmit("btnDisableKVM", $this->_("Reliablesite.client_manage_kvm.btn_ipmi_disable", true), array('id' => "btnDisableKVM", "class" => "btn btn-primary btn-xs"));
+                            }
+                            else{
+                                $this->_("Reliablesite.client_manage_kvm.ipmi_access.disabled");
+                                $this->Form->fieldSubmit("btnEnableKVM", $this->_("Reliablesite.client_manage_kvm.btn_ipmi_enable", true), array('id' => "btnEnableKVM", "class" => "btn btn-primary btn-xs"));
+                            }
+                            ?>
+                        </h4>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12 service-info">
+                        <label><?php $this->_("Reliablesite.client_manage_kvm.kvm_ip"); ?></label>
+                        <h4>
+                            <?php 
+                            echo (isset($kvmDetails['kvM_IP']) ? $this->Html->safe($kvmDetails['kvM_IP']) : '-'); 
+                            if(!empty($kvmDetails['kvM_IP'])){
+                                ?>
+                                <a href="https://<?php echo $kvmDetails['kvM_IP']; ?>" target="_blank" class="btn btn-primary btn-xs"><?php $this->_('Reliablesite.client_manage_kvm.btn_launch_kvm') ?> (https)</a>
+                                <a href="http://<?php echo $kvmDetails['kvM_IP']; ?>" target="_blank" class="btn btn-primary btn-xs"><?php $this->_('Reliablesite.client_manage_kvm.btn_launch_kvm') ?> (http)</a>
+                                <?php
+                            }
+                            ?>
+                        </h4>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 service-info">
+                        <label><?php $this->_("Reliablesite.client_manage_kvm.kvm_username"); ?></label>
+                        <h4>
+                            <?php echo (isset($kvmDetails['kvM_User']) ? $this->Html->safe($kvmDetails['kvM_User']) : null); ?>
+                        </h4>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 service-info">
+                        <label><?php $this->_("Reliablesite.client_manage_kvm.kvm_password"); ?></label>
+                        <h4>
+                            <?php echo (isset($kvmDetails['kvM_Password']) ? $this->Html->safe($kvmDetails['kvM_Password']) : null); ?>
+                        </h4>
+                    </div>
+                </div>
+
+                <h3><?php $this->_("Reliablesite.tab_IPMI_Sessions"); ?></h3>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th class="text-center">#</th>
+                                <th class="text-center"><?php $this->_("Reliablesite.client_manage_kvm.ipmi_sessions.server_name"); ?></th>
+                                <th class="text-center"><?php $this->_("Reliablesite.client_manage_kvm.ipmi_sessions.proxy_ip"); ?></th>
+                                <th class="text-center"><?php $this->_("Reliablesite.client_manage_kvm.ipmi_sessions.expires"); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                            foreach($IPMISessions as $key => $item){
+                            ?>
+                                <tr>
+                                    <td class="text-center"><?php echo $key + 1 ?></td>
+                                    <td class="text-center"><?php echo $item['serverName'] ?></td>
+                                    <td class="text-center"><?php echo $item['proxyIP'] ?></td>
+                                    <td class="text-center"><?php echo date("m/d/Y H:i:s a", strtotime($item['expirationDateTime'])) ?></td>
+                                </tr>
+                            <?php
+                            }
+                            if(empty($IPMISessions)){
+                            ?>
+                                <tr>
+                                    <td colspan="4" class="text-center">No active IPMI Sessions</td>
+                                </tr>
+                            <?php
+                            }
+                            ?>        
+                            
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 form-group text-center">
+                        <a href="<?php echo $manageServerLink ?>" class="btn btn-default"><?php $this->_('Reliablesite.back_to_manage_server') ?></a>
+                    </div>
+                </div>         
+            </div>    
+        </div>
+        <?php
+        $this->Form->end();
+        ?>
+        <script type="text/javascript">
+            jQuery(document).ready(function(){
+
+                jQuery("form#frmManageKVM input#btnEnableKVM, form#frmManageKVM input#btnDisableKVM").click(function(e){
+            
+                    e.preventDefault();
+
+                    var btn = jQuery(this);
+                    var btnName = btn.attr('name');
+                    var successMessage = "";
+                    var url = "";
+                    if(btnName == 'btnEnableKVM'){
+                        url = "<?php echo $enableKVMLink ?>";
+                        successMessage = "<?php $this->_("Reliablesite.client_manage_kvm.btn_enable_kvm_success_msg") ?>"
+                    }
+                    else if(btnName == 'btnDisableKVM'){
+                        url = "<?php echo $disableKVMLink ?>";
+                        successMessage = "<?php $this->_("Reliablesite.client_manage_kvm.btn_disable_kvm_success_msg") ?>"
+                    }
+
+                    btn.attr('disabled',true);
+                    var oldBtnHtml = btn.val();
+
+                    btn.val('Processing...');
+
+                    var data = jQuery("form#frmManageKVM").serialize();
+
+                    $.ajax({
+                        url : url,
+                        method : "post",
+                        data : data
+                    }).done(function (result) {
+                        
+                        if(result.success == 1){
+                            swal({
+                                title: "Success", 
+                                text: successMessage, 
+                                type: "success"
+                            }).then(function() {
+                                location.reload();
+                            });
+                        }
+                        else if(result.errors){
+                            swal({
+                                title: "Error", 
+                                text: result.errors.join("\n"),
+                                type: "error"
+                            }).then(function() {
+                                location.reload();
+                            });
+                            
+                        }
+                        else{
+                            alert("Something went wrong");
+                            location.reload();
+                        }
+
+                        btn.val(oldBtnHtml);
+                        btn.attr('disabled',false);
+
+                       
+
+                    });
+                    
+                });
+            });
+        </script>
+
+        <?php
+}
+?>            

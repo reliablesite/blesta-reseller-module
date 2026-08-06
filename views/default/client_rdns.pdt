@@ -1,0 +1,49 @@
+<?php
+$nav = ['overview' => 'Overview', 'os' => 'Reinstall OS', 'kvm' => 'KVM', 'bandwidth' => 'Bandwidth', 'backups' => 'Backups', 'rdns' => 'Reverse DNS', 'mac' => 'MAC', 'ddos' => 'DDoS'];
+?>
+<ul class="nav nav-pills mb-3">
+    <?php foreach ($nav as $key => $label) {
+        $active = ($page === $key) ? ' active' : ''; ?>
+        <li class="nav-item"><a class="nav-link<?php echo $active; ?>" href="?p=<?php echo $key; ?>"><?php echo $label; ?></a></li>
+    <?php } ?>
+</ul>
+<?php
+if (!empty($notice)) {
+    echo '<div class="alert alert-success">' . $this->Html->safe($notice) . '</div>';
+}
+if (!empty($error)) {
+    echo '<div class="alert alert-danger">' . $this->Html->safe($error) . '</div>';
+}
+?>
+<div class="card mb-3">
+    <div class="card-header"><strong>Reverse DNS</strong></div>
+    <div class="card-body">
+        <?php
+        if (empty($ip_blocks)) {
+            echo '<p>No IP blocks are assigned to this server.</p>';
+        }
+        ?>
+        <?php $this->Form->create(); ?>
+        <input type="hidden" name="action" value="set_rdns" />
+        <div class="form-group">
+            <label>IP Block</label>
+            <select name="ip_address_id" class="form-control">
+                <?php foreach ((array) $ip_blocks as $blk) {
+                    $bid = isset($blk['ipAddressId']) ? $blk['ipAddressId'] : '';
+                    $bdesc = isset($blk['ipDescription']) ? $blk['ipDescription'] : $bid; ?>
+                    <option value="<?php echo $this->Html->safe($bid); ?>"><?php echo $this->Html->safe($bdesc); ?></option>
+                <?php } ?>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>IP Address</label>
+            <input type="text" name="ip_address" class="form-control" placeholder="e.g. 192.0.2.10" />
+        </div>
+        <div class="form-group">
+            <label>Hostname (PTR)</label>
+            <input type="text" name="rdns" class="form-control" placeholder="host.example.com." />
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Save rDNS</button>
+        <?php $this->Form->end(); ?>
+    </div>
+</div>

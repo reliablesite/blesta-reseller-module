@@ -1,0 +1,134 @@
+<?php
+$nav = ['overview' => 'Overview', 'os' => 'Reinstall OS', 'kvm' => 'KVM', 'bandwidth' => 'Bandwidth', 'backups' => 'Backups', 'rdns' => 'Reverse DNS', 'mac' => 'MAC', 'ddos' => 'DDoS'];
+?>
+<ul class="nav nav-pills mb-3">
+    <?php foreach ($nav as $key => $label) {
+        $active = ($page === $key) ? ' active' : ''; ?>
+        <li class="nav-item"><a class="nav-link<?php echo $active; ?>" href="?p=<?php echo $key; ?>"><?php echo $label; ?></a></li>
+    <?php } ?>
+</ul>
+<?php
+if (!empty($notice)) {
+    echo '<div class="alert alert-success">' . $this->Html->safe($notice) . '</div>';
+}
+if (!empty($error)) {
+    echo '<div class="alert alert-danger">' . $this->Html->safe($error) . '</div>';
+}
+$dcCodes = is_array($datacenter_codes) ? $datacenter_codes : [];
+$hasProfiles = !empty($profiles);
+$hasBlocks = !empty($server_blocks);
+?>
+<div class="card mb-3">
+    <div class="card-header"><strong>DDoS Protection Profiles</strong></div>
+    <div class="card-body">
+        <p class="text-muted">Apply a tuned mitigation profile to an entire subnet or a single IP on this server. Only profiles in your server's datacenter are shown.</p>
+
+        <div class="border rounded p-2 mb-3" style="background:#f7f7f9;">
+            <span class="mr-3"><strong>Datacenter:</strong> <?php echo $this->Html->safe($datacenter_label !== '' ? $datacenter_label : '-'); ?>
+                <?php if (!empty($dcCodes)) { echo '<small class="text-muted">(' . $this->Html->safe(implode(', ', $dcCodes)) . ')</small>'; } ?>
+            </span>
+            <span class="mr-3"><strong>Profiles available:</strong> <?php echo (int) count($profiles); ?></span>
+            <span><strong>Your subnets:</strong> <?php echo (int) count($server_blocks); ?></span>
+        </div>
+
+        <?php if ($hasProfiles && $hasBlocks) { ?>
+            <h5>Assign IP to profile</h5>
+            <?php $this->Form->create(); ?>
+            <input type="hidden" name="action" value="ddos_assign" />
+            <input type="hidden" name="data_source_id" id="rs_ddos_ds" value="" />
+            <input type="hidden" name="profile_id" id="rs_ddos_pid" value="" />
+            <div class="form-group">
+                <label>Profile</label>
+                <select id="rs_ddos_profile" class="form-control"
+                    onchange="var o=this.options[this.selectedIndex];document.getElementById('rs_ddos_ds').value=o.getAttribute('data-ds')||'';document.getElementById('rs_ddos_pid').value=o.getAttribute('data-pid')||'';">
+                    <option value="">-- pick a profile --</option>
+                    <?php
+                    foreach ($profiles as $p) {
+                        $profile = isset($p['profile']) && is_array($p['profile']) ? $p['profile'] : [];
+                        $pid = isset($profile['id']) ? $profile['id'] : (isset($p['profileId']) ? $p['profileId'] : '');
+                        $pname = isset($profile['name']) ? $profile['name'] : (isset($p['name']) ? $p['name'] : '');
+                        $pdesc = isset($profile['description']) ? $profile['description'] : '';
+                        $dsId = isset($p['dataSourceId']) ? $p['dataSourceId'] : '';
+                        $optText = $pname . ($pdesc !== '' ? ' - ' . $pdesc : '');
+                        ?>
+                        <option value="<?php echo $this->Html->safe($dsId . ':' . $pid); ?>"
+                            data-ds="<?php echo $this->Html->safe($dsId); ?>"
+                            data-pid="<?php echo $this->Html->safe($pid); ?>"><?php echo $this->Html->safe($optText); ?></option>
+                        <?php
+                    }
+                    ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Subnet</label>
+                <select id="rs_ddos_subnet" class="form-control"
+                    onchange="document.getElementById('rs_ddos_ip').value=this.value;">
+                    <?php
+                    $firstCidr = '';
+                    foreach ($server_blocks as $b) {
+                        $desc = isset($b['description']) ? $b['description'] : '';
+                        if ($desc === '') {
+                            continue;
+                        }
+                        if ($firstCidr === '') {
+                            $firstCidr = $desc;
+                        }
+                        $dc = isset($b['dataCenterName']) ? $b['dataCenterName'] : '';
+                        ?>
+                        <option value="<?php echo $this->Html->safe($desc); ?>"><?php echo $this->Html->safe($desc . ($dc ? ' [' . $dc . ']' : '')); ?></option>
+                        <?php
+                    }
+                    ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>IP or CIDR to protect</label>
+                <input type="text" name="ip_input" id="rs_ddos_ip" class="form-control" value="<?php echo $this->Html->safe($firstCidr); ?>" placeholder="e.g. 192.0.2.0/24 or 192.0.2.10" />
+                <small class="text-muted">Leave the subnet to protect the whole block, or narrow it to a single IP within that subnet.</small>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Assign</button>
+            <?php $this->Form->end(); ?>
+        <?php } elseif (!$hasProfiles) { ?>
+            <div class="alert alert-info">
+                No DDoS profiles are available for this datacenter.
+                <?php if ((int) $all_profile_count > 0) { ?>
+                    <br><small><?php echo (int) $all_profile_count; ?> profile(s) exist on your account but none are in this server's datacenter<?php echo !empty($dcCodes) ? ' (' . $this->Html->safe(implode(', ', $dcCodes)) . ')' : ''; ?>.</small>
+                <?php } ?>
+            </div>
+        <?php } elseif (!$hasBlocks) { ?>
+            <div class="alert alert-info">No IP subnets are listed for this server yet.</div>
+        <?php } ?>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header"><strong>Currently protected</strong> <span class="text-muted">(<?php echo (int) count($protected); ?> assignment(s))</span></div>
+    <div class="card-body">
+        <?php if (empty($protected)) { ?>
+            <p class="text-muted mb-0"><em>No DDoS profile assignments for this server.</em></p>
+        <?php } else { ?>
+            <table class="table table-sm">
+                <tr class="heading_row">
+                    <td>Profile</td>
+                    <td>IP</td>
+                    <td></td>
+                </tr>
+                <?php foreach ($protected as $entry) { ?>
+                    <tr>
+                        <td><?php echo $this->Html->safe($entry['profile_name']); ?></td>
+                        <td style="font-family:monospace;"><?php echo $this->Html->safe($entry['ip']); ?></td>
+                        <td>
+                            <?php $this->Form->create(); ?>
+                            <input type="hidden" name="action" value="ddos_remove" />
+                            <input type="hidden" name="data_source_id" value="<?php echo $this->Html->safe($entry['data_source_id']); ?>" />
+                            <input type="hidden" name="profile_id" value="<?php echo $this->Html->safe($entry['profile_id']); ?>" />
+                            <input type="hidden" name="ip_id" value="<?php echo $this->Html->safe($entry['ip_id']); ?>" />
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Remove this IP from the profile?');">Remove</button>
+                            <?php $this->Form->end(); ?>
+                        </td>
+                    </tr>
+                <?php } ?>
+            </table>
+        <?php } ?>
+    </div>
+</div>

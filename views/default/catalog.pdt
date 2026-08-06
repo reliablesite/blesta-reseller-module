@@ -1,0 +1,129 @@
+<?php
+$this->Widget->clear();
+$this->Widget->create($this->_('Reliablesite.catalog.box_title', true));
+?>
+<div class="inner">
+    <div class="mb-2">
+        <a class="btn btn-primary btn-sm" href="?scr=catalog&amp;action=syncnow">Sync now</a>
+        <a class="btn btn-default btn-sm" href="?scr=catalog&amp;action=importall" onclick="return confirm('Import every catalog product that is not already imported?');">Import all</a>
+        <a class="btn btn-default btn-sm" href="?scr=catalog&amp;action=reformat" onclick="return confirm('Rewrite names/descriptions of all imported (non-frozen) products?');">Re-format names</a>
+        <a class="btn btn-default btn-sm" href="?scr=catalog&amp;refresh=1">Refresh catalog</a>
+    </div>
+    <?php
+    if (!empty($notice)) {
+        echo '<div class="alert alert-success">' . $this->Html->safe($notice) . '</div>';
+    }
+    if (!empty($error)) {
+        echo '<div class="alert alert-danger">' . $this->Html->safe($error) . '</div>';
+    }
+    if (empty($group_configured)) {
+        echo '<div class="alert alert-warning">Set an import package group in <strong>Settings</strong> before importing products.</div>';
+    }
+    if (!empty($fetch_error)) {
+        echo '<div class="alert alert-danger">Catalog could not be loaded: ' . $this->Html->safe($fetch_error) . '</div>';
+    }
+    $hasFormatter = class_exists('ReliablesiteProductFormatter');
+    $sel = function ($a, $b) {
+        return ((string) $a === (string) $b) ? ' selected' : '';
+    };
+    ?>
+    <form method="get" class="rs-filter">
+        <input type="hidden" name="scr" value="catalog" />
+        <input type="text" name="search" value="<?php echo $this->Html->safe($filters['search']); ?>" class="form-control" placeholder="Search name, SKU, CPU, location" style="width:240px;display:inline-block;" />
+        <select name="in_stock" class="form-control" style="width:auto;display:inline-block;">
+            <option value=""<?php echo $sel($filters['in_stock'], ''); ?>>All stock</option>
+            <option value="1"<?php echo $sel($filters['in_stock'], '1'); ?>>In stock only</option>
+            <option value="0"<?php echo $sel($filters['in_stock'], '0'); ?>>Out of stock only</option>
+        </select>
+        <select name="location" class="form-control" style="width:auto;display:inline-block;">
+            <option value="">All locations</option>
+            <?php foreach ($locations as $loc) { ?>
+                <option value="<?php echo $this->Html->safe($loc); ?>"<?php echo $sel($filters['location'], $loc); ?>><?php echo $this->Html->safe($loc); ?></option>
+            <?php } ?>
+        </select>
+        <select name="profile" class="form-control" style="width:auto;display:inline-block;">
+            <option value=""<?php echo $sel($filters['profile'], ''); ?>>All profiles</option>
+            <option value="standard"<?php echo $sel($filters['profile'], 'standard'); ?>>Standard</option>
+            <option value="efi"<?php echo $sel($filters['profile'], 'efi'); ?>>EFI / NVMe</option>
+            <option value="storage"<?php echo $sel($filters['profile'], 'storage'); ?>>Storage</option>
+        </select>
+        <select name="imported" class="form-control" style="width:auto;display:inline-block;">
+            <option value=""<?php echo $sel($filters['imported'], ''); ?>>All</option>
+            <option value="1"<?php echo $sel($filters['imported'], '1'); ?>>Imported</option>
+            <option value="0"<?php echo $sel($filters['imported'], '0'); ?>>Not imported</option>
+        </select>
+        <button type="submit" class="btn btn-default btn-sm">Filter</button>
+        <a class="btn btn-default btn-sm" href="?scr=catalog">Clear</a>
+        <span style="color:#666;margin-left:auto;">Showing <strong><?php echo (int) $shown_count; ?></strong> of <?php echo (int) $total_count; ?></span>
+    </form>
+    <table class="table">
+        <tr class="heading_row">
+            <td>SKU</td>
+            <td>Product</td>
+            <td>CPU</td>
+            <td>Profile</td>
+            <td>Location</td>
+            <td>Stock</td>
+            <td>Monthly (base)</td>
+            <td>Imported</td>
+            <td>Actions</td>
+        </tr>
+        <?php
+        foreach ($products as $row) {
+            $invId = $row['_inv_id'];
+            $name = $hasFormatter ? ReliablesiteProductFormatter::formatName($row) : (isset($row['description']) ? $row['description'] : $invId);
+            $cpu = isset($row['cpu']['raw_string']) ? $row['cpu']['raw_string']
+                : trim((isset($row['cpu']['brand']) ? $row['cpu']['brand'] : '') . ' ' . (isset($row['cpu']['model']) ? $row['cpu']['model'] : ''));
+            $stock = (int) $row['_stock'];
+            ?>
+            <tr>
+                <td><?php echo $this->Html->safe($invId); ?></td>
+                <td><?php echo $this->Html->safe($name); ?></td>
+                <td><?php echo $this->Html->safe($cpu !== '' ? $cpu : '-'); ?></td>
+                <td><span class="label label-default"><?php echo $this->Html->safe($row['_profile']); ?></span></td>
+                <td><?php echo $this->Html->safe(isset($row['data_center']) ? $row['data_center'] : '-'); ?></td>
+                <td>
+                    <span class="label <?php echo ($stock > 0 ? 'label-success' : 'label-default'); ?>"><?php echo $stock; ?></span>
+                </td>
+                <td><?php echo $row['_base_price'] > 0 ? ('$' . number_format($row['_base_price'], 2)) : '-'; ?></td>
+                <td>
+                    <?php
+                    if ($row['_frozen']) {
+                        echo '<span class="label label-warning">Imported (frozen)</span>';
+                    } elseif ($row['_imported']) {
+                        echo '<span class="label label-success">Imported</span>';
+                    } else {
+                        echo '<span class="label label-default">No</span>';
+                    }
+                    ?>
+                </td>
+                <td>
+                    <?php
+                    if (!$row['_imported']) {
+                        if (empty($group_configured)) {
+                            echo '<span class="btn btn-primary btn-sm disabled">Import</span>';
+                        } else {
+                            echo '<a class="btn btn-primary btn-sm" href="?scr=catalog&amp;action=import&amp;inventory_id=' . urlencode($invId) . '">Import</a>';
+                        }
+                    } else {
+                        $pid = urlencode($row['_package_id']);
+                        if ($row['_frozen']) {
+                            echo '<a class="btn btn-default btn-sm" href="?scr=catalog&amp;action=freeze&amp;package_id=' . $pid . '&amp;frozen=0">Resume sync</a> ';
+                        } else {
+                            echo '<a class="btn btn-default btn-sm" href="?scr=catalog&amp;action=freeze&amp;package_id=' . $pid . '&amp;frozen=1">Freeze</a> ';
+                        }
+                        echo '<a class="btn btn-default btn-sm" href="?scr=catalog&amp;action=untrack&amp;package_id=' . $pid . '" onclick="return confirm(\'Stop tracking this product?\');">Untrack</a>';
+                    }
+                    ?>
+                </td>
+            </tr>
+            <?php
+        }
+        if (empty($products)) {
+            echo '<tr><td colspan="9">No catalog products match the current filters.</td></tr>';
+        }
+        ?>
+    </table>
+</div>
+<?php
+$this->Widget->end();

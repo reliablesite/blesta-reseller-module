@@ -1,0 +1,68 @@
+<?php
+$nav = ['overview' => 'Overview', 'os' => 'Reinstall OS', 'kvm' => 'KVM', 'bandwidth' => 'Bandwidth', 'backups' => 'Backups', 'rdns' => 'Reverse DNS', 'mac' => 'MAC', 'ddos' => 'DDoS'];
+?>
+<ul class="nav nav-pills mb-3">
+    <?php foreach ($nav as $key => $label) {
+        $active = ($page === $key) ? ' active' : ''; ?>
+        <li class="nav-item"><a class="nav-link<?php echo $active; ?>" href="?p=<?php echo $key; ?>"><?php echo $label; ?></a></li>
+    <?php } ?>
+</ul>
+<?php
+if (!empty($error)) {
+    echo '<div class="alert alert-danger">' . $this->Html->safe($error) . '</div>';
+}
+$periods = ['Hour', 'Day', 'Week', 'Month', 'Year'];
+$hasData = !empty($bandwidth_series['labels']);
+?>
+<div class="card mb-3">
+    <div class="card-header"><strong>Bandwidth</strong></div>
+    <div class="card-body">
+        <div class="rs-actions mb-2">
+            <?php foreach ($periods as $p) { ?>
+                <?php $this->Form->create(); ?>
+                <input type="hidden" name="period" value="<?php echo $p; ?>" />
+                <button type="submit" class="btn btn-sm <?php echo ($period === $p ? 'btn-primary' : 'btn-default'); ?>"><?php echo $p; ?></button>
+                <?php $this->Form->end(); ?>
+            <?php } ?>
+        </div>
+        <?php if (!$hasData) { ?>
+            <p class="text-muted">No bandwidth data available for this period.</p>
+        <?php } else { ?>
+            <div style="position:relative;height:320px;width:100%;">
+                <canvas id="rs-bw-chart"></canvas>
+            </div>
+            <script type="text/javascript">
+            (function () {
+                var series = <?php echo json_encode($bandwidth_series); ?>;
+                function draw() {
+                    if (typeof Chart === 'undefined') { setTimeout(draw, 200); return; }
+                    var el = document.getElementById('rs-bw-chart');
+                    if (!el) { return; }
+                    if (window.rsBwChart) { window.rsBwChart.destroy(); }
+                    window.rsBwChart = new Chart(el, {
+                        type: 'line',
+                        data: {
+                            labels: series.labels,
+                            datasets: [
+                                { label: 'In (Mbps)', data: series.in_mbps, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.1)', fill: true, tension: 0.3, pointRadius: 0 },
+                                { label: 'Out (Mbps)', data: series.out_mbps, borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.1)', fill: true, tension: 0.3, pointRadius: 0 },
+                                { label: 'In (GB total)', data: series.in_gb, borderColor: '#a855f7', borderDash: [5, 5], tension: 0.3, pointRadius: 0, hidden: true },
+                                { label: 'Out (GB total)', data: series.out_gb, borderColor: '#f59e0b', borderDash: [5, 5], tension: 0.3, pointRadius: 0, hidden: true }
+                            ]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { x: { ticks: { maxTicksLimit: 12, autoSkip: true } } } }
+                    });
+                }
+                if (typeof Chart === 'undefined') {
+                    var s = document.createElement('script');
+                    s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+                    s.onload = draw;
+                    document.head.appendChild(s);
+                } else {
+                    draw();
+                }
+            })();
+            </script>
+        <?php } ?>
+    </div>
+</div>

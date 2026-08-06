@@ -1,0 +1,25 @@
+<div class="pad">
+   
+    <?php
+    if($isServerAssigned == true){
+    
+        $this->Form->create($manageServerLink);
+        ?>
+        <div class="button_row">
+            <a class="btn btn-default submit" href="<?php echo $manageServerLink; ?>">Manage Server</a>
+        </div>
+        <?php
+        $this->Form->end();
+    }
+    else{
+        $this->Form->create($assignServerLink);
+        ?>
+        <div class="button_row">
+            <span>No server assigned, click here to assign one.</span>
+            <a class="btn btn-default submit" href="<?php echo $assignServerLink; ?>">Assign Server</a>
+        </div>
+        <?php
+        $this->Form->end();
+    }    
+   ?>
+</div>

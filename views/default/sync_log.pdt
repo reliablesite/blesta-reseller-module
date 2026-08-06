@@ -1,0 +1,22 @@
+<?php
+$this->Widget->clear();
+$this->Widget->create('Catalog Sync Log');
+?>
+<div class="inner">
+    <?php
+    if (empty($logs)) {
+        echo '<p>No sync runs recorded yet.</p>';
+    }
+    foreach ((array) $logs as $log) {
+        $when = isset($log->date) ? date('Y-m-d H:i:s', (int) $log->date) : '';
+        ?>
+        <div class="title_row first"><h3><?php echo $this->Html->safe($when); ?></h3></div>
+        <div class="pad">
+            <pre style="white-space:pre-wrap;"><?php echo $this->Html->safe(isset($log->log) ? $log->log : ''); ?></pre>
+        </div>
+        <?php
+    }
+    ?>
+</div>
+<?php
+$this->Widget->end();

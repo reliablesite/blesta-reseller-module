@@ -1,0 +1,154 @@
+		<link rel="stylesheet" type="text/css" href="<?php echo $this->Html->safe($this->view_dir . '/css/style.css');?>">
+		<?php
+		if(isset($_REQUEST['msg']) && $_REQUEST['msg']=='success')
+		{
+		?>
+		    <section class="error_section">
+        		<article class="error_box">
+                    <a class="close" href="#">&times;</a>
+                    <p>Setting saved successfully </p>
+        			</article>
+        	</section>
+		<?php
+		}
+		
+		echo (isset($message) ? $message : null);
+
+		$this->Widget->clear();
+		$this->Widget->create($this->_("Reliablesite.add_row.import_packages", true));
+
+		$this->Form->create();
+		?>
+		<div class="inner">
+			<div class="mb-2 row">
+				<div class="col-6">
+            		<a class="btn btn-primary" href="<?php echo $vars->homeLink ?>">Back To Home</a>
+				</div>
+				<div class="col-6 text-right">
+					<a class="btn btn-primary" href="<?php echo $vars->viewSyncLogLink ?>">View Sync Logs</a>
+					<a class="btn btn-primary" href="<?php echo $vars->manualPackageSyncLink ?>">Manual Sync</a>
+				</div>	
+        	</div>
+			
+			<div class="title_row first">
+				<h3><?php $this->_("Reliablesite.add_row.import_packages");?></h3>
+			</div>
+			<?php
+			if($vars->packageGroupsArray=='false')
+			{
+			?>
+				<div class="error_box error"><?php $this->_("Reliablesite.!error.empty_package_group");?></div>
+            <?php
+            }
+            else
+            {
+            ?>
+            <div class="pad">
+            	<ul>
+					<li>
+					<?php
+                    	$this->Form->label($this->_("Reliablesite.row_meta.product_group", true), "import_package_group");
+                        $this->Form->fieldSelect("import_package_group",$vars->packageGroups, $selectedPackageGroup, array('id' => "import_package_group"));
+                    ?>
+					</li>
+					<li>
+                    	<?php
+                        $this->Form->label("Price Adjustment (%)", "import_profit_margin");
+                       	$this->Form->fieldText("import_profit_margin", $importProfitMargin, array('id' => "import_profit_margin")); 
+						?>
+						<span>Automatically increase price by % over ReliableSite retail pricing.</span>
+                    
+                    </li>
+					<li>
+                    	<?php
+                        $this->Form->label("Currency", "import_currency_code");
+						$this->Form->fieldSelect("import_currency_code", $vars->currencies, $importCurrencyCode, array('id' => "import_currency_code"));
+						?>
+                    </li>
+					<li>
+						<?php 
+							$this->Form->fieldCheckbox("enable_cron_email", "yes", ($enableCronEmail == 'yes' ? true : false), array("id" => "enable_cron_email")); 
+							$this->Form->label("Enable e-mail report from the cron job", "enable_cron_email", array("class"=>"inline"));
+						?>	
+					</li>
+					<li class="email_field">
+						<?php 
+							$this->Form->label($this->_("Reliablesite.row_meta.sync_package_log_receiver_email", true), "sync_package_log_receiver_email");
+                       		$this->Form->fieldText("sync_package_log_receiver_email", $logReceiverEmail, array('id' => "sync_package_log_receiver_email"));
+						?>
+						<span>Cron report will send on this email address. You can set comma seprated multiple emails.</span>	
+					</li>
+
+							
+
+				</ul>
+			</div>
+			<p class="pb-0"><strong>Select products excluded for sync(Import):</strong></p>
+			<div style="overflow:scroll; height:300px;">
+				<table class="table">
+					<thead>
+						<tr class="heading_row">
+							<td>#</td>
+							<td>Package Name</td>
+							<td>Stock</td>
+						</tr>
+					</thead>
+					<tbody>
+						<?php
+							$odd = false;
+							foreach($apiServers as $apiServer){
+								if($odd == true){
+									$class = "class='odd_row'";
+									$odd = false;
+								}
+								elseif($odd == false){
+									$class = '';
+									$odd = true;
+								}
+								?>
+								<tr <?php echo $class; ?> >
+									<td>
+										<?php 
+											$this->Form->fieldCheckbox("excludedPackages[]", $apiServer->Product_Id, (in_array($apiServer->Product_Id, $excludedPackages) ? true : false)); 	
+										?>
+									</td>
+									<td>
+										<?php
+										if(isset($existingPackages[$apiServer->Product_Id])){
+											echo '<a target="_blank" href="/admin/packages/edit/'.$existingPackages[$apiServer->Product_Id].'">'.$this->Html->safe($apiServer->Description).'</a>';
+										}else{
+											echo (isset($apiServer->Description) ? $this->Html->safe($apiServer->Description) : null); 
+										}
+										?>
+									</td>
+									<td><?php echo (isset($apiServer->Stock) ? $this->Html->safe($apiServer->Stock) : null); ?></td>
+								</tr>
+								<?php	
+							}
+						?>
+					</tbody>
+				</table>
+			</div>					
+			<div class="button_row"><a class="btn btn-primary submit" href="#">Save Settings</a></div>
+            <?php
+            }
+            ?>
+		</div>
+	<?php
+	$this->Form->end();
+	$this->Widget->end();
+?>
+<script>
+	$(document).ready(function(){
+		$("input#enable_cron_email").change(function(){
+			if($(this).is(":checked")){
+				$("li.email_field").show();
+			}
+			else{
+				$("li.email_field").hide();
+			}
+		});
+
+		$("input#enable_cron_email").change();
+	})
+</script>

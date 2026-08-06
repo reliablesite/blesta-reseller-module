@@ -1,0 +1,6 @@
+<div class="card mb-3">
+    <div class="card-body">
+        <h4><i class="fas fa-hourglass-half"></i> <?php $this->_('Reliablesite.client.pending_title'); ?></h4>
+        <p class="mb-0"><?php $this->_('Reliablesite.client.pending_body'); ?></p>
+    </div>
+</div>

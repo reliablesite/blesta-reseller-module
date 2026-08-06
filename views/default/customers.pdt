@@ -1,0 +1,99 @@
+<?php
+$this->Widget->clear();
+$this->Widget->create($this->_('Reliablesite.customers.box_title', true));
+?>
+<div class="inner">
+    <?php
+    if (!empty($notice)) {
+        echo '<div class="alert alert-success">' . $this->Html->safe($notice) . '</div>';
+    }
+    if (!empty($error)) {
+        echo '<div class="alert alert-danger">' . $this->Html->safe($error) . '</div>';
+    }
+    foreach ((array) $errors as $e) {
+        echo '<div class="alert alert-danger">' . $this->Html->safe(is_scalar($e) ? $e : json_encode($e)) . '</div>';
+    }
+    ?>
+    <div class="title_row first"><h3>Add Customer</h3></div>
+    <div class="pad">
+        <?php
+        // Dedicated POST to the edit-row endpoint (keeps the password out of the URL).
+        $this->Form->create($add_action);
+        ?>
+        <input type="hidden" name="rs_action" value="add_customer" />
+        <input type="text" name="username" class="form-control" placeholder="Username" style="width:160px;display:inline-block;" />
+        <input type="email" name="email" class="form-control" placeholder="Email" style="width:220px;display:inline-block;" />
+        <input type="password" name="password" class="form-control" placeholder="Password" style="width:160px;display:inline-block;" />
+        <button type="submit" class="btn btn-primary btn-sm">Add</button>
+        <?php
+        $this->Form->end();
+        ?>
+        <p class="mt-1"><small>The result is shown on the module home after saving.</small></p>
+    </div>
+    <form method="get" class="mb-2">
+        <input type="hidden" name="scr" value="customers" />
+        <input type="text" name="search" value="<?php echo $this->Html->safe($search); ?>" class="form-control" placeholder="Search" style="width:220px;display:inline-block;" />
+        <button type="submit" class="btn btn-default btn-sm">Search</button>
+    </form>
+    <table class="table">
+        <tr class="heading_row">
+            <td>ID</td>
+            <td>Username</td>
+            <td>Email</td>
+            <td>Linked Client</td>
+            <td>Assigned Server(s)</td>
+        </tr>
+        <?php
+        foreach ($customers as $cust) {
+            $email = isset($cust['emailAddress']) ? $cust['emailAddress'] : (isset($cust['email']) ? $cust['email'] : '');
+            $username = isset($cust['userName']) ? $cust['userName'] : (isset($cust['username']) ? $cust['username'] : '');
+            $link = isset($linked[strtolower($email)]) ? $linked[strtolower($email)] : null;
+            $servers = isset($assigned_servers[strtolower($username)]) ? $assigned_servers[strtolower($username)] : [];
+            ?>
+            <tr>
+                <td><?php echo $this->Html->safe(isset($cust['userId']) ? $cust['userId'] : '-'); ?></td>
+                <td><?php echo $this->Html->safe($username); ?></td>
+                <td><?php echo $this->Html->safe($email); ?></td>
+                <td>
+                    <?php
+                    if ($link) {
+                        echo '<a href="' . $this->Html->safe($client_base . $link['client_id'] . '/') . '">'
+                            . $this->Html->safe($link['name']) . ' (#' . $this->Html->safe($link['id_code']) . ')</a>';
+                    } else {
+                        echo '<span class="text-muted">Not a local client</span>';
+                    }
+                    ?>
+                </td>
+                <td>
+                    <?php
+                    if (empty($servers)) {
+                        echo '<span class="text-muted">None</span>';
+                    } else {
+                        foreach ($servers as $s) {
+                            $lbl = $s['server_label'] !== '' ? $s['server_label'] : ('#' . $s['server_id']);
+                            echo '<div class="rs-actions" style="margin-bottom:4px;">';
+                            echo '<span class="label label-info">' . $this->Html->safe($lbl) . '</span>';
+                            echo '<a class="btn btn-danger btn-sm" href="?scr=customers&amp;action=unassign&amp;rsid='
+                                . urlencode($s['server_id']) . '" onclick="return confirm(\'Unassign this server? The service returns to Pending Orders.\');">Unassign</a>';
+                            echo '</div>';
+                        }
+                    }
+                    ?>
+                </td>
+            </tr>
+            <?php
+        }
+        if (empty($customers)) {
+            echo '<tr><td colspan="5">No customers found.</td></tr>';
+        }
+        ?>
+    </table>
+    <div class="pagination_row">
+        <?php if ($page > 1) { ?>
+            <a class="btn btn-default btn-sm" href="?scr=customers&amp;search=<?php echo urlencode($search); ?>&amp;page=<?php echo $page - 1; ?>">&laquo; Prev</a>
+        <?php } ?>
+        <a class="btn btn-default btn-sm" href="?scr=customers&amp;search=<?php echo urlencode($search); ?>&amp;page=<?php echo $page + 1; ?>">Next &raquo;</a>
+    </div>
+</div>
+<?php
+$this->Widget->end();

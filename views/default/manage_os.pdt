@@ -1,0 +1,319 @@
+<script src="<?php echo $this->Html->safe($this->view_dir . 'js/sweetalert.min.js');?>"></script>
+<link rel="stylesheet" type="text/css" href="<?php echo $this->Html->safe($this->view_dir . '/css/style.css');?>">
+<?php
+    $this->Widget->clear();
+    $this->Widget->create('Install/Re-Install Operating System');
+    ?>
+    <div class="inner">
+        <div class="mb-2">
+            <a class="btn btn-primary" href="<?php echo $vars['homeLink'] ?>">Back To Home</a>
+            <a class="btn btn-primary" href="<?php echo $vars['manageServerLink'] ?>">Back To Manage</a>
+        </div>
+        <?php 
+        if(!empty($vars['errors']))
+        {
+            ?>
+                <section class="error_section">
+                    <article class="error_box error">
+                        <a class="close" href="#">&times;</a>
+                        <?php echo $vars['errors'][0];?>
+                    </article>
+                </section>
+            <?php
+        }
+        else{
+
+        
+            ?>
+            <div class="title_row first">
+                <h3>Install/Re-Install Operating System</h3>
+            </div>
+            <?php
+                if($vars['isInstalling'] == true){
+                   $this->Form->create($vars['cancelInstallOSLink'], array('id'=> 'frmCancelInstallOS'));
+                   $this->Form->fieldHidden("serverId", $vars['serverId']);
+                    ?>
+                    <div class="pad">
+                        <ul>
+                            <li class="inline inline-left">
+                                <label>Server Name:</label>
+                                <strong><?php echo $vars['serverDetail']['serverLabel']; ?></strong>
+                            </li>
+                            <li class="inline">
+                                <label>Data Center:</label>
+                                <strong><?php echo $vars['installationStatus']; ?></strong>
+                            </li>
+                            <li class="text-center">
+                                <?php
+                                $this->Form->fieldSubmit("btnCancelInstallOS", 'Cancel Install', array('id' => "btnCancelInstallOS", "class" => "btn btn-danger"));
+                                ?>
+                                <a href="" class="btn btn-primary">Refresh Status</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <?php
+                    $this->Form->end();
+                    ?>
+                    <script type="text/javascript">
+                        jQuery(document).ready(function(){
+
+                            jQuery("form#frmCancelInstallOS").submit(function(e){
+                                e.preventDefault();
+                                jQuery('#rsError').html('');
+                                var btn = jQuery("form#frmCancelInstallOS input#btnCancelInstallOS");
+
+                                btn.attr('disabled',true);
+                                var oldBtnHtml = btn.val();
+
+                                btn.val('Cancelling...');
+
+
+                                var url = jQuery(this).attr('action');
+                                var data = jQuery(this).serialize();
+
+                                $.ajax({
+                                    url : url,
+                                    method : "post",
+                                    data : data
+                                }).done(function (result) {
+                                    if(result.success == 1){
+
+                                        swal({
+                                            title: "Success", 
+                                            text: "Installation process cancelled successfully!", 
+                                            type: "success"
+                                        }
+                                        );
+
+                                        location.reload();
+
+                                    }
+                                    else if(result.errors){
+                                        swal(
+                                            'Error',
+                                            result.errors.join("\n"),
+                                            'error'
+                                        );
+                                    }
+                                    else{
+                                        alert("Something went wrong");
+                                    }
+
+                                    btn.val(oldBtnHtml);
+                                    btn.attr('disabled',false);
+
+                                });
+                            });
+                        });
+                    </script>
+                    <?php  
+                }
+                else{
+                    $this->Form->create($vars['installOSLink'], array('id'=> 'frmInstallOS'));
+                    ?>
+                    <div class="pad">
+                        <section class="error_section">
+                        <article class="error_box alert">                       
+                            This process will wipe all of the data on this server.
+                        </article>
+                        </section>
+                        <ul>
+                            <li>
+                                <?php
+                                $this->Form->label("Server Name", "serverName");
+                                $this->Form->fieldHidden("serverId", $vars['serverId']);                  
+                                $this->Form->fieldText("serverName", (isset($vars['serverDetail']['serverLabel']) ? $vars['serverDetail']['serverLabel'] : null), array('id' => "serverName", "class" => "xlarge", "readonly" => "readonly"));
+                                ?>
+                            </li>
+                            <li>
+                                <?php
+                                $this->Form->label("IP Block", "serverIPBlock");                   
+                                $this->Form->fieldSelect("serverIPBlock", $vars['serverIPBlocks'], '', array('id' => "serverIPBlock", "class" => "xlarge"));
+                                ?>    
+                            </li>
+                            <li>
+                                <?php
+                                $this->Form->label("Gateway", "serverGateway");                                                 
+                                $this->Form->fieldText("serverGateway", '', array('id' => "serverGateway", "class" => "xlarge", "readonly" => "readonly"));
+                                ?>
+                            </li>
+                            <li>
+                                <?php
+                                $this->Form->label("Netmask", "serverNetmask");                                                 
+                                $this->Form->fieldText("serverNetmask", '', array('id' => "serverNetmask", "class" => "xlarge", "readonly" => "readonly"));
+                                ?>
+                            </li>
+                            <li>
+                                <?php
+                                $this->Form->label("Server IP", "serverIP");   
+                                ?>                                              
+                                <select class="xlarge" name="serverIP" id="serverIP">
+                                    <?php
+                                    foreach($vars['ipAddressData'] as $key => $item){
+                                        foreach ($item['ips'] as $ip){
+                                            echo '<option style="display:none;" value="'.$ip.'" data-ipblock="'.$key.'">'.$ip.'</option>';
+                                        }
+                                    }
+                                    ?>
+                                </select>
+                            </li>
+                            <li>
+                                <?php
+                                $this->Form->label("License Key (Optional)", "serverGateway");                                                 
+                                $this->Form->fieldText("licenseKey", '', array('id' => "licenseKey", "class" => "xlarge"));
+                                ?>
+                            </li>
+                            <li>
+                                <?php
+                                $this->Form->label("OS to Install", "operatingSystemId");                   
+                                $this->Form->fieldSelect("operatingSystemId", $vars['compitableOS'], '', array('id' => "operatingSystemId", "class" => "xlarge"));
+                                ?>    
+                            </li>
+                            <li>
+                                <?php
+                                $this->Form->label("Partitioning Scheme", "partitioningSchemeId");                   
+                                $this->Form->fieldSelect("partitioningSchemeId", ['' => '--Please Select--'], '', array('id' => "partitioningSchemeId", "class" => "xlarge", "disabled" => "disabled"));
+                                ?>    
+                            </li>
+                            
+                            <li class="text-center">
+                                <?php
+                                    $this->Form->fieldSubmit("btnInstallOS", 'Install OS', array('id' => "btnInstallOS", "class" => "btn btn-primary"));
+                                ?>
+                            </li>
+                            
+                        </ul>
+                    </div>    
+        
+                    <?php
+                    $this->Form->end();
+                    ?>
+                    <script type="text/javascript">
+                        var ipAddressData = <?php echo $vars['ipAddressDataJson']; ?>;
+
+                        jQuery(document).ready(function(){
+
+                            jQuery("select#serverIPBlock").change(function(){
+                                var ipBlock = jQuery(this).val();
+                               
+                                /*hide all serverIp*/
+                                jQuery("select#serverIP option").hide();
+
+                                /*Display IP based on IP block*/
+                                jQuery("select#serverIP option[data-ipblock='"+ipBlock+"']").show();
+
+                                /*fill up gateway*/
+                                jQuery.each(ipAddressData, function(key, item) {
+                                    if(key == ipBlock){
+                                        jQuery("input#serverGateway").val(item.gateway);
+                                        jQuery("input#serverNetmask").val(item.subnet);
+                                    }
+                                });
+
+                            });
+
+                             jQuery("form#frmInstallOS").submit(function(e){
+                                e.preventDefault();
+                                jQuery('#rsError').html('');
+                                var btn = jQuery("form#frmInstallOS input#btnInstallOS");
+
+                                btn.attr('disabled',true);
+                                var oldBtnHtml = btn.val();
+
+                                btn.val('Installing...');
+
+
+                                var url = jQuery(this).attr('action');
+                                var data = jQuery(this).serialize();
+
+                                $.ajax({
+                                    url : url,
+                                    method : "post",
+                                    data : data
+                                }).done(function (result) {
+                                    if(result.success == 1){
+
+                                        swal({
+                                            title: "Success", 
+                                            text: "Installation process started successfully!", 
+                                            type: "success"
+                                        }
+                                        );
+
+                                        location.reload();
+
+                                    }
+                                    else if(result.errors){
+                                        swal(
+                                            'Error',
+                                            result.errors.join("\n"),
+                                            'error'
+                                        );
+                                    }
+                                    else{
+                                        alert("Something went wrong");
+                                    }
+
+                                    btn.val(oldBtnHtml);
+                                    btn.attr('disabled',false);
+
+                                });
+                            });
+
+                            /*get Partitioning Scheme*/
+                            jQuery("select#operatingSystemId").change(function(){
+                                var operatingSystemId = jQuery(this).val();
+                                var dd = jQuery("select#partitioningSchemeId");
+
+                                dd.html("<option value=''>--Please Select--</option>");
+                                dd.attr('disabled', true);
+
+                                if(operatingSystemId){
+
+                                    dd.html("<option value=''>Fetching....</option>");
+                                    dd.attr('disabled', true);
+
+                                    var url = "<?php echo  $vars['getpartitioningschemeLink']; ?>";
+
+                                    var _csrf_token =  jQuery("form#frmInstallOS input[name='_csrf_token']").val();
+
+                                    $.ajax({
+                                        url : url,
+                                        method : "post",
+                                        data : {operatingSystemId : operatingSystemId, _csrf_token : _csrf_token}
+                                    }).done(function (result) {
+                                        if(result.success == 1){
+                                            var options = '<option value="">--Please Select--</option>';
+                                            jQuery(result.partitionSchemes).each(function(index, partitionScheme){
+                                                options += '<option value="'+partitionScheme.partitioningSchemeId+'">'+partitionScheme.title+'</option>'; 
+                                            });
+
+                                            dd.html(options);
+                                            dd.attr('disabled', false);
+                                        }
+                                        else if(result.errors){
+
+                                            alert(result.errors.join("\n"));
+                                        }
+                                        else{
+                                            alert("Something went wrong");
+                                        }
+
+                                    });
+                                }
+                            });
+
+                            /*Fired manually on page load*/
+                            jQuery("select#serverIPBlock").change();
+
+                        });
+                    </script> 
+                    <?php
+                }
+        }
+        ?>
+    </div>
+    <?php
+    $this->Widget->end();
+    
+?>

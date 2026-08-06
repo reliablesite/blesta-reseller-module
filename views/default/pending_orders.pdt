@@ -1,0 +1,180 @@
+<?php
+$this->Widget->clear();
+$this->Widget->create($this->_('Reliablesite.pending.box_title', true));
+?>
+<style>
+.rs-module .rs-order-badge{display:inline-block;padding:3px 8px;border-radius:6px;background:#ecfdf5;color:#065f46;font-size:12px;font-weight:600;border:1px solid #a7f3d0;}
+.rs-module .rs-order-badge small{display:block;font-weight:400;color:#047857;}
+.rs-module .rs-order-failed{color:#b91c1c;font-size:12px;margin-bottom:4px;}
+.rs-module .rs-help{display:block;color:#6b7280;font-size:12px;margin-top:4px;}
+.rs-modal-backdrop{position:fixed;inset:0;background:rgba(17,24,39,.5);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding-top:8vh;}
+.rs-modal{background:#fff;border-radius:12px;width:440px;max-width:92vw;box-shadow:0 20px 45px rgba(0,0,0,.25);overflow:hidden;}
+.rs-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #e5e7eb;background:#fafafa;}
+.rs-modal-head h3{margin:0;font-size:15px;font-weight:600;color:#111827;}
+.rs-modal-close{border:0;background:none;font-size:22px;line-height:1;color:#6b7280;cursor:pointer;}
+.rs-modal-body{padding:18px;}
+.rs-modal-body label{display:block;font-size:13px;font-weight:600;color:#374151;margin:12px 0 4px;}
+.rs-modal-body label:first-of-type{margin-top:0;}
+.rs-modal-product{margin:0 0 6px;font-size:13px;color:#4b5563;}
+.rs-modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
+</style>
+<div class="inner">
+    <?php
+    if (!empty($notice)) {
+        echo '<div class="alert alert-success">' . $this->Html->safe($notice) . '</div>';
+    }
+    if (!empty($error)) {
+        echo '<div class="alert alert-danger">' . $this->Html->safe($error) . '</div>';
+    }
+    if (!empty($pending) && empty($server_options)) {
+        echo '<div class="alert alert-warning">No unassigned servers were found in your ReliableSite account. '
+            . 'Add or free up a server before assigning.</div>';
+    }
+    if (empty($pending)) {
+        echo '<p>' . $this->_('Reliablesite.pending.none', true) . '</p>';
+    } else {
+        ?>
+        <table class="table">
+            <tr class="heading_row">
+                <td>Service</td>
+                <td>Customer</td>
+                <td>Ordered</td>
+                <td><?php $this->_('Reliablesite.order.col_order'); ?></td>
+                <td>Assign Server</td>
+                <td></td>
+            </tr>
+            <?php
+            foreach ($pending as $svc) {
+                $sid = (int) $svc->id;
+                $state = isset($order_states[$sid]) ? $order_states[$sid] : null;
+                $customer = trim((isset($svc->first_name) ? $svc->first_name : '') . ' ' . (isset($svc->last_name) ? $svc->last_name : ''));
+                $svc_number = isset($svc->service_number) ? $svc->service_number : $svc->id;
+                ?>
+                <tr>
+                    <td>#<?php echo $this->Html->safe($svc_number); ?></td>
+                    <td>
+                        <?php echo $this->Html->safe($customer); ?>
+                        <br><small><?php echo $this->Html->safe(isset($svc->email) ? $svc->email : ''); ?></small>
+                    </td>
+                    <td><?php echo $this->Html->safe(isset($svc->date_added) ? $svc->date_added : ''); ?></td>
+                    <td>
+                        <?php
+                        if ($state && !empty($state['placed'])) {
+                            echo '<span class="rs-order-badge">' . $this->_('Reliablesite.order.placed_badge', true)
+                                . ' #' . $this->Html->safe($state['order_id']);
+                            if (!empty($state['invoice_id'])) {
+                                echo '<small>' . $this->_('Reliablesite.order.invoice', true) . ' #'
+                                    . $this->Html->safe($state['invoice_id']) . '</small>';
+                            }
+                            echo '</span>';
+                        } else {
+                            if ($state && isset($state['status']) && $state['status'] === 'failed' && !empty($state['last_error'])) {
+                                echo '<div class="rs-order-failed">' . $this->Html->safe($state['last_error']) . '</div>';
+                            }
+                            $btnLabel = ($state && isset($state['status']) && $state['status'] === 'failed')
+                                ? $this->_('Reliablesite.order.retry', true)
+                                : $this->_('Reliablesite.order.create', true);
+                            ?>
+                            <button type="button" class="btn btn-secondary btn-sm rs-order-btn"
+                                data-service-id="<?php echo $this->Html->safe($sid); ?>"
+                                data-service-number="<?php echo $this->Html->safe($svc_number); ?>"
+                                data-customer="<?php echo $this->Html->safe($customer); ?>"
+                                onclick="rsOpenOrder(this);"><?php echo $this->Html->safe($btnLabel); ?></button>
+                            <?php
+                        }
+                        ?>
+                    </td>
+                    <td>
+                        <form method="get" style="display:inline;">
+                            <input type="hidden" name="scr" value="pendingorders" />
+                            <input type="hidden" name="action" value="assign" />
+                            <input type="hidden" name="service_id" value="<?php echo $this->Html->safe($svc->id); ?>" />
+                            <input type="hidden" name="rs_server_label" value="" />
+                            <select name="rs_server_id" class="form-control" style="width:280px;display:inline-block;"
+                                onchange="this.form.rs_server_label.value=this.options[this.selectedIndex].getAttribute('data-label')||'';">
+                                <option value="">-- Select a server --</option>
+                                <?php foreach ($server_options as $srvid => $opt) { ?>
+                                    <option value="<?php echo $this->Html->safe($srvid); ?>" data-label="<?php echo $this->Html->safe($opt['label']); ?>"><?php echo $this->Html->safe($opt['display']); ?></option>
+                                <?php } ?>
+                            </select>
+                            <button type="submit" class="btn btn-primary btn-sm">Assign</button>
+                        </form>
+                    </td>
+                    <td>
+                        <form method="get" style="display:inline;" onsubmit="return confirm('Cancel this service?');">
+                            <input type="hidden" name="scr" value="pendingorders" />
+                            <input type="hidden" name="action" value="cancel" />
+                            <input type="hidden" name="service_id" value="<?php echo $this->Html->safe($svc->id); ?>" />
+                            <button type="submit" class="btn btn-danger btn-sm">Cancel</button>
+                        </form>
+                    </td>
+                </tr>
+                <?php
+            }
+            ?>
+        </table>
+
+        <!-- Shared Create Order modal -->
+        <div id="rsOrderModal" class="rs-modal-backdrop" style="display:none;">
+            <div class="rs-modal">
+                <div class="rs-modal-head">
+                    <h3><?php $this->_('Reliablesite.order.modal_title'); ?></h3>
+                    <button type="button" class="rs-modal-close" onclick="rsCloseOrder();">&times;</button>
+                </div>
+                <form method="get" class="rs-modal-body">
+                    <input type="hidden" name="scr" value="pendingorders" />
+                    <input type="hidden" name="action" value="order" />
+                    <input type="hidden" name="service_id" id="rsOrderServiceId" value="" />
+                    <p class="rs-modal-product" id="rsOrderProduct"></p>
+                    <label for="rsOrderHostname"><?php $this->_('Reliablesite.order.hostname'); ?></label>
+                    <input type="text" name="hostname" id="rsOrderHostname" class="form-control" required placeholder="server.example.com" />
+                    <label for="rsOrderPayment"><?php $this->_('Reliablesite.order.payment_method'); ?></label>
+                    <?php if (!empty($payment_methods)) { ?>
+                        <select name="payment_method" id="rsOrderPayment" class="form-control">
+                            <?php foreach ($payment_methods as $module => $label) { ?>
+                                <option value="<?php echo $this->Html->safe($module); ?>"><?php echo $this->Html->safe($label); ?></option>
+                            <?php } ?>
+                        </select>
+                    <?php } else { ?>
+                        <input type="text" name="payment_method" id="rsOrderPayment" class="form-control" placeholder="paypal" />
+                        <span class="rs-help"><?php $this->_('Reliablesite.order.payment_method.fallback'); ?></span>
+                    <?php } ?>
+                    <label for="rsOrderPromo"><?php $this->_('Reliablesite.order.promo_code'); ?></label>
+                    <input type="text" name="promo_code" id="rsOrderPromo" class="form-control" />
+                    <div class="rs-modal-foot">
+                        <button type="button" class="btn btn-default" onclick="rsCloseOrder();"><?php $this->_('Reliablesite.order.cancel_btn'); ?></button>
+                        <button type="submit" class="btn btn-primary"><?php $this->_('Reliablesite.order.submit_btn'); ?></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <script>
+        function rsOpenOrder(btn) {
+            var modal = document.getElementById('rsOrderModal');
+            document.getElementById('rsOrderServiceId').value = btn.getAttribute('data-service-id') || '';
+            var num = btn.getAttribute('data-service-number') || '';
+            var cust = btn.getAttribute('data-customer') || '';
+            document.getElementById('rsOrderProduct').textContent = 'Service #' + num + (cust ? ' — ' + cust : '');
+            document.getElementById('rsOrderHostname').value = '';
+            document.getElementById('rsOrderPromo').value = '';
+            modal.style.display = 'flex';
+            document.getElementById('rsOrderHostname').focus();
+        }
+        function rsCloseOrder() {
+            document.getElementById('rsOrderModal').style.display = 'none';
+        }
+        (function () {
+            var modal = document.getElementById('rsOrderModal');
+            if (modal) {
+                modal.addEventListener('click', function (e) {
+                    if (e.target === modal) { rsCloseOrder(); }
+                });
+            }
+        })();
+        </script>
+        <?php
+    }
+    ?>
+</div>
+<?php
+$this->Widget->end();

@@ -1,0 +1,288 @@
+<script src="<?php echo $this->Html->safe($this->view_dir . 'js/sweetalert.min.js');?>"></script>
+<?php
+    if(!empty($vars['errors']))
+    {
+		?>
+		    <section class="error_section">
+                <article class="error_box error">
+                    <a class="close" href="#">&times;</a>
+                    <p><?php echo $vars['errors'][0];?></p>
+                </article>
+            </section>
+		<?php
+    }
+    $this->Widget->clear();
+    $this->Widget->create($this->_("Reliablesite.add_row.nullroutes", true));
+    ?>
+    <div class="inner">
+        <div class="mb-2">
+            <a class="btn btn-primary" href="<?php echo $vars['homeLink'] ?>">Back To Home</a>
+        </div>
+        <div class="title_row first">
+            <h3><?php $this->_("Reliablesite.add_row.add_null_route");?></h3>
+        </div>
+        <?php
+            $this->Form->create($vars['addNullRouteLink'], array('id'=> 'frmAddNullRoute'));
+            ?>
+            <div class="pad mb-5">
+                <ul>
+                    <li>
+                        <?php
+                        $this->Form->label("IP Address", "ipAddress");
+                         $this->Form->fieldText("ipAddress", '', array('id' => "ipAddress"));
+                        ?>
+                    </li>
+                    <li>
+                        <?php
+                        $this->Form->label("Remove After", "removeTime");
+                        $this->Form->fieldText("removeTime", '', array('id' => "removeTime"));
+                        $this->Form->fieldSelect("removeTimeType",['' => '--Please Select--','minute' => 'Minute(s)', 'hour' => 'Hour(s)', 'day' => 'Day(s)', 'month' => 'Month(s)'],'', array('id' => "removeTimeType"));
+                        ?>
+                    </li>
+                    
+                    <li>
+                        <?php
+                        $this->Form->label("Allow Customer to Remove", "resellerLock");
+                        $this->Form->fieldSelect("resellerLock",['' => '--Please Select--','true' => 'Yes', 'false' => 'No'],'', array('id' => "resellerLock"));
+                        ?>
+                    </li>
+                    <li>
+                        <?php
+                            $this->Form->fieldSubmit("btnAddNullRoute", "Add Null Route", array("class"=> "btn btn-primary btn-sm"));
+                        ?>
+                    </li>
+                </ul>
+            </div>
+            <?php
+
+            $this->Form->end();
+            ?>
+        <div class="title_row first">
+            <h3><?php $this->_("Reliablesite.add_row.nullroutes");?></h3>
+        </div>
+       
+            <?php
+            $this->Form->create();
+            ?>
+            <div class="mb-2">
+                <?php
+                $this->Form->label("Search By:", "filterField", array("class"=> "inline"));
+                ?>
+                <strong>
+                    <?php
+                    $this->Form->label("IP", "searchIP", array("class"=> "inline"));
+                    ?>
+                </strong>
+                <?php
+                    $this->Form->fieldText("searchIP", (isset($vars['searchIP']) ? $vars['searchIP'] : null), array('id' => "searchIP"));
+                ?>    
+                <strong>
+                    <?php
+                    $this->Form->label("Only Active?", "onlyActive", array("class"=> "inline"));
+                    ?>
+                </strong>
+                <?php
+                $this->Form->fieldSelect("onlyActive",['true' => 'Yes', 'false' => 'No'], (isset($vars['onlyActive']) ? $vars['onlyActive'] : null), array('id' => "onlyActive"));
+            
+                $this->Form->fieldSubmit("btnsearch", "Search", array("class"=> "btn btn-primary btn-sm"));
+                ?>
+            </div>
+            <?php
+
+            $this->Form->end();
+            ?>
+        
+        <table class="table">
+            <thead>
+                <tr class="heading_row">
+                    <td>#</td>
+                    <td>IP Address</td>
+                    <td>Server</td>
+                    <td>Active</td>
+                    <td>Description</td>
+                    <td>Add Time</td>
+                    <td>Remove Time</td>
+                    <td>Scheduled Remove</td>
+                    <td></td>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                    if(count($vars['nullRoutesData']) > 0){
+                        $no = 1;
+                        $odd = false;
+                        foreach($vars['nullRoutesData'] as $nullRoute){
+                            if($odd == true){
+                                $class = "class='odd_row'";
+                                $odd = false;
+                            }
+                            elseif($odd == false){
+                                $class = '';
+                                $odd = true;
+                            }
+                            ?>
+                            <tr <?php echo $class; ?>>
+                                <td><?php echo $no; ?></td>
+                                <td><?php echo $nullRoute['nullRouteIP']; ?></td>
+                                <td><?php echo $nullRoute['server']; ?></td>
+                                <td><?php echo ($nullRoute['nullRouteActive'] == 1) ? 'Yes' : 'No'; ?></td>
+                                <td><?php echo $nullRoute['nullRouteDescription']; ?></td>
+                                <td>
+                                    <?php 
+                                    if(!empty($nullRoute['nullRouteAddTime'])){
+                                        echo date("m/d/Y H:i:s", strtotime($nullRoute['nullRouteAddTime']));
+                                    }
+                                    ?>
+                                </td>
+                                <td>
+                                    <?php 
+                                    if(!empty($nullRoute['nullRouteRemoveTime'])){
+                                        echo date("m/d/Y H:i:s", strtotime($nullRoute['nullRouteRemoveTime']));
+                                    }
+                                    ?>
+                                </td>
+                                <td>
+                                    <?php 
+                                    if(!empty($nullRoute['scheduledRemove'])){
+                                        echo date("m/d/Y H:i:s", strtotime($nullRoute['scheduledRemove']));
+                                    }
+                                    ?>
+                                </td>
+                                
+                                <td>
+                                    <?php echo '<a href="javascript:removeNullRoute(this,\''.$nullRoute['nullRouteIP'].'\')" class="btn btn-primary btn-sm">Remove</a>'; ?>
+                                </td>
+                            </tr>
+                            <?php
+                            $no++;
+                        }
+                    }
+                    else{
+                        ?>
+                            <tr>
+                                <td class="text-center" colspan="5">No Data Found</td>
+                            </tr>    
+                        <?php    
+                    }
+                        ?>            
+            </tbody>
+        </table>
+        <div class="pagination">
+            <ul>
+                <li class="previous"><a href="<?php echo $vars['prevPageLink'] ?>">« Previous Page</a></li>
+                <li class=""><a href="javascript:void();">Page <?php echo $vars['page']; ?></a></li>
+                <li class="next"><a href="<?php echo $vars['nextPageLink'] ?>">Next Page »</a></li>
+            </ul>
+        </div>  
+    </div>
+    <?php
+    $this->Widget->end();
+    ?>
+    <script type="text/javascript">
+        function removeNullRoute(btn, ip){
+            swal({
+                    title:'Are you sure?',
+                    text:"Are you sure you want to remove this null route?",
+                    icon: "warning",
+                    buttons: true,
+                    dangerMode: true,
+            })
+            .then((value) => {
+                if (value) {
+                    url = "<?php echo $vars['removeNullRouteLink'] ?>";
+                    var btn = jQuery(btn);
+
+                    btn.attr('disabled',true);
+                    var oldBtnHtml = btn.val();
+
+                    btn.val('Removing...');
+
+                    var _csrf_token =  jQuery("form#frmAddNullRoute input[name='_csrf_token']").val();
+
+                    $.ajax({
+                        url : url,
+                        method : "post",
+                        data : {ip : ip, _csrf_token : _csrf_token}
+                    }).done(function (result) {
+                        if(result.success == 1){
+
+                            swal({
+                                    title: "Success", 
+                                    text: "Null Route removed successfully!",
+                                    type: "success"
+                                })
+                                .then((value) => {
+                                    location.reload();
+                                });
+                        }
+                        else if(result.errors){
+                            swal(
+                                'Error',
+                                result.errors.join("\n"),
+                                'error'
+                            );
+                        }
+                        else{
+                            alert("Something went wrong");
+                            location.reload();
+                        }
+
+                        btn.val(oldBtnHtml);
+                        btn.attr('disabled',false);
+
+                    });
+                }
+            });
+        }
+
+        jQuery(document).ready(function(){
+            jQuery("form#frmAddNullRoute").submit(function(e){
+                e.preventDefault();
+
+                var btn = jQuery("form#frmAddNullRoute input#btnAddNullRoute");
+
+                btn.attr('disabled',true);
+                var oldBtnHtml = btn.val();
+
+                btn.val('Adding...');
+
+
+                var url = jQuery(this).attr('action');
+                var data = jQuery(this).serialize();
+
+                $.ajax({
+                    url : url,
+                    method : "post",
+                    data : data
+                }).done(function (result) {
+                    if(result.success == 1){
+
+                        swal({
+                            title: "Success", 
+                            text: "Successfully null routed!", 
+                            type: "success"
+                        }).then(function(){
+                            location.reload();
+                        });
+                        
+                    }
+                    else if(result.errors){
+                        swal(
+                            'Error',
+                            result.errors.join("\n"),
+                            'error'
+                        );
+                            
+                    }
+                    else{
+                        alert("Something went wrong");
+                        location.reload();
+                    }
+
+                    btn.val(oldBtnHtml);
+                    btn.attr('disabled',false);
+
+                });
+            });
+        });
+    </script>                

@@ -1,0 +1,136 @@
+<?php
+$this->Widget->clear();
+$this->Widget->create($this->_('Reliablesite.settings.box_title', true));
+?>
+<div class="inner">
+    <?php
+    $this->Form->create($form_action);
+    ?>
+    <div class="title_row first"><h3>Credentials</h3></div>
+    <div class="pad">
+        <ul>
+            <li>
+                <?php
+                $this->Form->label($this->_('Reliablesite.row_meta.account_name', true), 'account_name');
+                $this->Form->fieldText('account_name', (isset($vars->account_name) ? $vars->account_name : null), ['id' => 'account_name', 'class' => 'form-control']);
+                ?>
+            </li>
+            <li>
+                <?php
+                $this->Form->label($this->_('Reliablesite.row_meta.api_key', true), 'api_key');
+                $this->Form->fieldText('api_key', (isset($vars->api_key) ? $vars->api_key : null), ['id' => 'api_key', 'class' => 'form-control']);
+                ?>
+            </li>
+        </ul>
+    </div>
+    <div class="title_row"><h3>Provisioning &amp; Notifications</h3></div>
+    <div class="pad">
+        <ul>
+            <li>
+                <?php
+                $this->Form->fieldCheckbox('admin_notify_enabled', '1', (isset($vars->admin_notify_enabled) && $vars->admin_notify_enabled == '1'), ['id' => 'admin_notify_enabled']);
+                $this->Form->label($this->_('Reliablesite.row_meta.admin_notify_enabled', true), 'admin_notify_enabled', ['class' => 'inline']);
+                ?>
+            </li>
+            <li>
+                <?php
+                $this->Form->label($this->_('Reliablesite.row_meta.admin_notify_emails', true), 'admin_notify_emails');
+                $this->Form->fieldText('admin_notify_emails', (isset($vars->admin_notify_emails) ? $vars->admin_notify_emails : null), ['id' => 'admin_notify_emails', 'class' => 'form-control', 'placeholder' => 'ops@example.com, alerts@example.com']);
+                ?>
+            </li>
+        </ul>
+    </div>
+    <div class="title_row"><h3>Catalog Import &amp; Sync</h3></div>
+    <div class="pad">
+        <ul>
+            <li>
+                <?php
+                $this->Form->label($this->_('Reliablesite.row_meta.import_package_group', true), 'import_package_group');
+                $this->Form->fieldSelect('import_package_group', $group_options, (isset($vars->import_package_group) ? $vars->import_package_group : null), ['id' => 'import_package_group', 'class' => 'form-control']);
+                ?>
+            </li>
+            <li>
+                <?php
+                $this->Form->label($this->_('Reliablesite.row_meta.import_currency_code', true), 'import_currency_code');
+                $this->Form->fieldSelect('import_currency_code', $currency_options, (isset($vars->import_currency_code) ? $vars->import_currency_code : null), ['id' => 'import_currency_code', 'class' => 'form-control']);
+                ?>
+            </li>
+            <li>
+                <?php
+                $this->Form->label($this->_('Reliablesite.row_meta.markup_type', true), 'markup_type');
+                $this->Form->fieldSelect('markup_type', ['percent' => $this->_('Reliablesite.settings.markup_percent', true), 'flat' => $this->_('Reliablesite.settings.markup_flat', true)], (isset($vars->markup_type) ? $vars->markup_type : 'percent'), ['id' => 'markup_type', 'class' => 'form-control']);
+                ?>
+            </li>
+            <li>
+                <?php
+                $this->Form->label($this->_('Reliablesite.row_meta.markup_value', true), 'markup_value');
+                $this->Form->fieldText('markup_value', (isset($vars->markup_value) ? $vars->markup_value : '0'), ['id' => 'markup_value', 'class' => 'form-control']);
+                ?>
+            </li>
+            <li>
+                <?php
+                $this->Form->label($this->_('Reliablesite.row_meta.cycle_mode', true), 'cycle_mode');
+                $this->Form->fieldSelect('cycle_mode', ['monthly_only' => $this->_('Reliablesite.settings.cycle_monthly', true), 'all' => $this->_('Reliablesite.settings.cycle_all', true)], (isset($vars->cycle_mode) ? $vars->cycle_mode : 'monthly_only'), ['id' => 'cycle_mode', 'class' => 'form-control']);
+                ?>
+            </li>
+            <li>
+                <?php
+                $this->Form->fieldCheckbox('catalog_sync_enabled', '1', (isset($vars->catalog_sync_enabled) && $vars->catalog_sync_enabled == '1'), ['id' => 'catalog_sync_enabled']);
+                $this->Form->label($this->_('Reliablesite.row_meta.catalog_sync_enabled', true), 'catalog_sync_enabled', ['class' => 'inline']);
+                ?>
+            </li>
+            <li>
+                <?php
+                $this->Form->fieldCheckbox('options_sync_enabled', '1', (isset($vars->options_sync_enabled) && $vars->options_sync_enabled == '1'), ['id' => 'options_sync_enabled']);
+                $this->Form->label($this->_('Reliablesite.row_meta.options_sync_enabled', true), 'options_sync_enabled', ['class' => 'inline']);
+                ?>
+                <span class="rs-help"><?php $this->_('Reliablesite.row_meta.options_sync_enabled.note'); ?></span>
+            </li>
+            <li>
+                <?php
+                $this->Form->fieldCheckbox('sync_report_enabled', '1', (isset($vars->sync_report_enabled) && $vars->sync_report_enabled == '1'), ['id' => 'sync_report_enabled']);
+                $this->Form->label($this->_('Reliablesite.row_meta.sync_report_enabled', true), 'sync_report_enabled', ['class' => 'inline']);
+                ?>
+            </li>
+            <li>
+                <?php
+                $this->Form->label($this->_('Reliablesite.row_meta.sync_frequency', true), 'sync_frequency');
+                $this->Form->fieldSelect('sync_frequency', ['15' => '15', '30' => '30', '45' => '45', '60' => '60'], (isset($vars->sync_frequency) ? $vars->sync_frequency : '60'), ['id' => 'sync_frequency', 'class' => 'form-control']);
+                ?>
+            </li>
+        </ul>
+    </div>
+    <div class="title_row"><h3>Order API</h3></div>
+    <div class="pad">
+        <ul>
+            <li>
+                <?php
+                $this->Form->label($this->_('Reliablesite.row_meta.order_default_payment_method', true), 'order_default_payment_method');
+                $current_pm = (isset($vars->order_default_payment_method) ? $vars->order_default_payment_method : null);
+                if (!empty($payment_methods)) {
+                    $pm_options = ['' => $this->_('Reliablesite.settings.payment_method_none', true)];
+                    foreach ($payment_methods as $pm_module => $pm_label) {
+                        $pm_options[$pm_module] = $pm_label;
+                    }
+                    // Preserve a stored value that is no longer returned by the API.
+                    if ($current_pm !== null && $current_pm !== '' && !isset($pm_options[$current_pm])) {
+                        $pm_options[$current_pm] = $current_pm;
+                    }
+                    $this->Form->fieldSelect('order_default_payment_method', $pm_options, $current_pm, ['id' => 'order_default_payment_method', 'class' => 'form-control']);
+                } else {
+                    $this->Form->fieldText('order_default_payment_method', $current_pm, ['id' => 'order_default_payment_method', 'class' => 'form-control', 'placeholder' => 'paypal']);
+                }
+                ?>
+                <span class="rs-help"><?php $this->_('Reliablesite.row_meta.order_default_payment_method.note'); ?></span>
+            </li>
+        </ul>
+    </div>
+    <div class="button_row">
+        <button type="submit" class="btn btn-primary float-right"><?php $this->_('Reliablesite.settings.save'); ?></button>
+    </div>
+    <?php
+    $this->Form->end();
+    ?>
+</div>
+<?php
+$this->Widget->end();

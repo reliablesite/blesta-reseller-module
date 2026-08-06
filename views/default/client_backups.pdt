@@ -1,0 +1,49 @@
+<?php
+$nav = ['overview' => 'Overview', 'os' => 'Reinstall OS', 'kvm' => 'KVM', 'bandwidth' => 'Bandwidth', 'backups' => 'Backups', 'rdns' => 'Reverse DNS', 'mac' => 'MAC', 'ddos' => 'DDoS'];
+?>
+<ul class="nav nav-pills mb-3">
+    <?php foreach ($nav as $key => $label) {
+        $active = ($page === $key) ? ' active' : ''; ?>
+        <li class="nav-item"><a class="nav-link<?php echo $active; ?>" href="?p=<?php echo $key; ?>"><?php echo $label; ?></a></li>
+    <?php } ?>
+</ul>
+<?php
+if (!empty($notice)) {
+    echo '<div class="alert alert-success">' . $this->Html->safe($notice) . '</div>';
+}
+if (!empty($error)) {
+    echo '<div class="alert alert-danger">' . $this->Html->safe($error) . '</div>';
+}
+?>
+<div class="card mb-3">
+    <div class="card-header"><strong>Backup Storage</strong></div>
+    <div class="card-body">
+        <?php
+        if (empty($backups)) {
+            echo '<p>No backup storage is provisioned for this server.</p>';
+        }
+        foreach ((array) $backups as $acct) {
+            if (!is_array($acct)) {
+                continue;
+            }
+            $ftpId = isset($acct['ftpAccountId']) ? $acct['ftpAccountId'] : (isset($acct['id']) ? $acct['id'] : '');
+            $user = isset($acct['username']) ? $acct['username'] : (isset($acct['ftpUsername']) ? $acct['ftpUsername'] : '');
+            $enabled = !empty($acct['enabled']) || !empty($acct['enable']);
+            ?>
+            <div class="border rounded p-2 mb-2">
+                <p class="mb-1"><strong>Account:</strong> <?php echo $this->Html->safe($user); ?>
+                    <?php echo $enabled ? '<span class="badge badge-success">Enabled</span>' : '<span class="badge badge-secondary">Disabled</span>'; ?>
+                </p>
+                <?php $this->Form->create(); ?>
+                <input type="hidden" name="action" value="set_backup" />
+                <input type="hidden" name="ftp_account_id" value="<?php echo $this->Html->safe($ftpId); ?>" />
+                <label class="inline"><input type="checkbox" name="enable" value="1" <?php echo $enabled ? 'checked' : ''; ?> /> Enabled</label>
+                <input type="password" name="password" class="form-control" placeholder="New FTP password" style="width:220px;display:inline-block;" />
+                <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                <?php $this->Form->end(); ?>
+            </div>
+            <?php
+        }
+        ?>
+    </div>
+</div>

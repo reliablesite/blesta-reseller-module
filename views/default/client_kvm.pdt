@@ -1,0 +1,53 @@
+<?php
+$nav = ['overview' => 'Overview', 'os' => 'Reinstall OS', 'kvm' => 'KVM', 'bandwidth' => 'Bandwidth', 'backups' => 'Backups', 'rdns' => 'Reverse DNS', 'mac' => 'MAC', 'ddos' => 'DDoS'];
+?>
+<ul class="nav nav-pills mb-3">
+    <?php foreach ($nav as $key => $label) {
+        $active = ($page === $key) ? ' active' : ''; ?>
+        <li class="nav-item"><a class="nav-link<?php echo $active; ?>" href="?p=<?php echo $key; ?>"><?php echo $label; ?></a></li>
+    <?php } ?>
+</ul>
+<?php
+if (!empty($notice)) {
+    echo '<div class="alert alert-success">' . $this->Html->safe($notice) . '</div>';
+}
+if (!empty($error)) {
+    echo '<div class="alert alert-danger">' . $this->Html->safe($error) . '</div>';
+}
+$enabled = !empty($kvm['accessEnabled']);
+$kget = function ($keys) use ($kvm) {
+    foreach ((array) $keys as $k) {
+        if (isset($kvm[$k]) && $kvm[$k] !== '') {
+            return $kvm[$k];
+        }
+    }
+    return '';
+};
+?>
+<div class="card mb-3">
+    <div class="card-header"><strong>KVM / IPMI Remote Console</strong></div>
+    <div class="card-body">
+        <?php if ($enabled) { ?>
+            <p>KVM access is currently <span class="badge badge-success">enabled</span>.</p>
+            <table class="table table-sm">
+                <tr><td>IP / Host</td><td><?php echo $this->Html->safe($kget(['ipAddress', 'ip', 'host'])); ?></td></tr>
+                <tr><td>Username</td><td><?php echo $this->Html->safe($kget(['userName', 'user', 'username'])); ?></td></tr>
+                <tr><td>Password</td><td><?php echo $this->Html->safe($kget(['password'])); ?></td></tr>
+            </table>
+            <?php $this->Form->create(); ?>
+            <input type="hidden" name="action" value="disable_kvm" />
+            <button type="submit" class="btn btn-danger btn-sm">Disable KVM</button>
+            <?php $this->Form->end(); ?>
+        <?php } else { ?>
+            <p>KVM access is currently <span class="badge badge-secondary">disabled</span>. Enable it for your current IP to access the remote console.</p>
+            <?php $this->Form->create(); ?>
+            <input type="hidden" name="action" value="enable_kvm" />
+            <div class="form-group">
+                <label>Allowed IP address</label>
+                <input type="text" name="remote_ip" class="form-control" value="<?php echo $this->Html->safe($client_ip); ?>" />
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Enable KVM</button>
+            <?php $this->Form->end(); ?>
+        <?php } ?>
+    </div>
+</div>

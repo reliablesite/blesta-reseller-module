@@ -1,0 +1,161 @@
+<script src="<?php echo $this->Html->safe($this->view_dir . 'js/sweetalert.min.js');?>"></script>
+<link rel="stylesheet" type="text/css" href="<?php echo $this->Html->safe($this->view_dir . '/css/style.css');?>">
+<?php
+$this->Widget->clear();
+$this->Widget->create('Reverse DNS');
+?>
+<div class="inner">
+    <div class="mb-2">
+        <a class="btn btn-primary" href="<?php echo $homeLink ?>">Back To Home</a>
+        <a class="btn btn-primary" href="<?php echo $manageServerLink ?>">Back To Manage</a>
+    </div>
+    <?php
+    if(!empty($error)){
+
+        ?>
+            <section class="error_section">
+                <article class="error_box error">
+                    <a class="close" href="#">&times;</a>
+                    <?php echo $error;?>
+                </article>
+            </section>
+        
+        <?php
+        } 
+    else{
+        ?>
+        <div class="title_row first">
+            <h3><?php $this->_("Reliablesite.tab_ReverseDNS"); ?></h3>
+        </div>
+        <?php
+        $this->Form->create($setReverseDNSLink, array('id'=> 'frmreverseDNS'));
+        $this->Form->fieldHidden("serverId", $rsServerId);
+        $this->Form->fieldHidden("ipAddressId", $ipAddressId);
+        ?>
+        <div class="pad">
+            <ul>
+                
+                <li>
+                    <label><?php $this->_("Reliablesite.client_server_details.server_name"); ?></label>
+                    <strong>
+                        <?php echo (isset($serverDetail['serverLabel']) ? $this->Html->safe($serverDetail['serverLabel']) : null); ?>
+                    <strong>
+                </li>
+                <li>
+                    <label><?php $this->_("Reliablesite.reverse_dns.ip_address"); ?></label>
+                    <?php
+                    $this->Form->fieldSelect("ipAddress", $ipAddresses, '', array('id' => "ipAddress", "class" => "xlarge"));
+                    ?>
+                </li>
+                <li>
+                    <label><?php $this->_("Reliablesite.reverse_dns.record"); ?></label>
+                    <?php
+                    $this->Form->fieldText("rDNSRecord", '', array('id' => "rDNSRecord", "class" => "xlarge"));
+                    ?>
+                </li>
+                <li class="text-center">
+                    <?php
+                        $this->Form->fieldSubmit("btnSaveReverseDNS", $this->_('Reliablesite.reverse_dns.btn_update', true), array('id' => "btnSaveReverseDNS", "class" => "btn btn-primary"));
+                    ?>
+                </li>
+            </ul>    
+        </div>
+        <?php
+        $this->Form->end();
+        ?>
+        <script type="text/javascript">
+                    
+            jQuery(document).ready(function(){
+                        
+                jQuery("select#ipAddress").change(function(){
+                            
+                    var dd = $(this);
+
+                    $("form#frmreverseDNS input[name='rDNSRecord']").val('');
+
+                    var url = "<?php echo $getReverseDNSLink; ?>";
+                    var data = $("form#frmreverseDNS").serialize();
+
+                    dd.attr('disabled',true);
+
+                    $.ajax({
+                        url : url,
+                        method : "post",
+                        data : data
+                    }).done(function (result) {
+                        if(result.success == 1){
+                            $("form#frmreverseDNS input[name='rDNSRecord']").val(result.dnsRecord);
+                        }
+                        else if(result.errors){
+                            swal(
+                                'Error',
+                                result.errors.join("\n"),
+                                'error'
+                            );
+                        }
+                        else{
+                            alert("Something went wrong");
+                        }
+
+                        dd.attr('disabled',false);
+
+                    });
+                            
+                });
+
+                jQuery("form#frmreverseDNS").submit(function(e){
+                    
+                    e.preventDefault();
+                    
+                    var btn = jQuery("form#frmreverseDNS input#btnSaveReverseDNS");
+
+                    btn.attr('disabled',true);
+                    var oldBtnHtml = btn.val();
+
+                    btn.val('Updating...');
+
+
+                    var url = jQuery(this).attr('action');
+                    var data = jQuery(this).serialize();
+
+                    $.ajax({
+                        url : url,
+                        method : "post",
+                        data : data
+                    }).done(function (result) {
+                        if(result.success == 1){
+                            swal({
+                                title: "Success", 
+                                text: "Record updated successfully!", 
+                                type: "success"
+                            });
+                        }
+                        else if(result.errors){
+                            swal(
+                                'Error',
+                                result.errors.join("\n"),
+                                'error'
+                            );
+                        }
+                        else{
+                            alert("Something went wrong");
+                        }
+
+                        btn.val(oldBtnHtml);
+                        btn.attr('disabled',false);
+
+                    });
+                });
+                
+                /*Fired manually on page load*/
+                jQuery("select#ipAddress").change();
+
+            });
+        </script>
+        <?php
+    }
+?>
+</div>
+<?php
+$this->Widget->end();
+?>

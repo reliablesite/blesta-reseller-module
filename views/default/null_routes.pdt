@@ -1,0 +1,57 @@
+<?php
+$this->Widget->clear();
+$this->Widget->create($this->_('Reliablesite.null_routes.box_title', true));
+?>
+<div class="inner">
+    <?php
+    if (!empty($notice)) {
+        echo '<div class="alert alert-success">' . $this->Html->safe($notice) . '</div>';
+    }
+    if (!empty($error)) {
+        echo '<div class="alert alert-danger">' . $this->Html->safe($error) . '</div>';
+    }
+    ?>
+    <div class="title_row first"><h3>Add Null Route</h3></div>
+    <div class="pad">
+        <form method="get">
+            <input type="hidden" name="scr" value="nullroutes" />
+            <input type="hidden" name="action" value="add" />
+            <input type="text" name="ip" class="form-control" placeholder="IP address" style="width:200px;display:inline-block;" />
+            <button type="submit" class="btn btn-primary btn-sm">Add</button>
+        </form>
+    </div>
+    <table class="table">
+        <tr class="heading_row">
+            <td>IP</td>
+            <td>Added</td>
+            <td>Scheduled Removal</td>
+            <td></td>
+        </tr>
+        <?php
+        foreach ((array) $routes as $r) {
+            $ip = isset($r['ipAddress']) ? $r['ipAddress'] : (isset($r['nullRouteIP']) ? $r['nullRouteIP'] : (isset($r['ip']) ? $r['ip'] : ''));
+            ?>
+            <tr>
+                <td><?php echo $this->Html->safe($ip); ?></td>
+                <td><?php echo $this->Html->safe(isset($r['dateAdded']) ? $r['dateAdded'] : (isset($r['createdAt']) ? $r['createdAt'] : '')); ?></td>
+                <td><?php echo $this->Html->safe(isset($r['scheduledRemove']) ? $r['scheduledRemove'] : ''); ?></td>
+                <td>
+                    <a class="btn btn-danger btn-sm" href="?scr=nullroutes&amp;action=remove&amp;ip=<?php echo urlencode($ip); ?>">Remove</a>
+                </td>
+            </tr>
+            <?php
+        }
+        if (empty($routes)) {
+            echo '<tr><td colspan="4">No null routes.</td></tr>';
+        }
+        ?>
+    </table>
+    <div class="pagination_row">
+        <?php if ($page > 1) { ?>
+            <a class="btn btn-default btn-sm" href="?scr=nullroutes&amp;search=<?php echo urlencode($search); ?>&amp;page=<?php echo $page - 1; ?>">&laquo; Prev</a>
+        <?php } ?>
+        <a class="btn btn-default btn-sm" href="?scr=nullroutes&amp;search=<?php echo urlencode($search); ?>&amp;page=<?php echo $page + 1; ?>">Next &raquo;</a>
+    </div>
+</div>
+<?php
+$this->Widget->end();

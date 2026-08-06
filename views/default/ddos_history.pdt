@@ -1,0 +1,47 @@
+<?php
+$this->Widget->clear();
+$this->Widget->create('DDoS History');
+?>
+<div class="inner">
+    <?php
+    foreach ((array) $errors as $e) {
+        echo '<div class="alert alert-danger">' . $this->Html->safe(is_scalar($e) ? $e : json_encode($e)) . '</div>';
+    }
+    ?>
+    <form method="get" class="mb-2">
+        <input type="hidden" name="scr" value="ddoshistory" />
+        <input type="text" name="search" value="<?php echo $this->Html->safe($search); ?>" class="form-control" placeholder="Search IP" style="width:200px;display:inline-block;" />
+        <button type="submit" class="btn btn-default btn-sm">Search</button>
+    </form>
+    <table class="table">
+        <tr class="heading_row">
+            <td>IP</td>
+            <td>Started</td>
+            <td>Ended</td>
+            <td>Peak</td>
+        </tr>
+        <?php
+        foreach ((array) $attacks as $atk) {
+            ?>
+            <tr>
+                <td><?php echo $this->Html->safe(isset($atk['ipAddress']) ? $atk['ipAddress'] : (isset($atk['ip']) ? $atk['ip'] : '')); ?></td>
+                <td><?php echo $this->Html->safe(isset($atk['startTime']) ? $atk['startTime'] : ''); ?></td>
+                <td><?php echo $this->Html->safe(isset($atk['endTime']) ? $atk['endTime'] : ''); ?></td>
+                <td><?php echo $this->Html->safe(isset($atk['peak']) ? $atk['peak'] : (isset($atk['peakValue']) ? $atk['peakValue'] : '')); ?></td>
+            </tr>
+            <?php
+        }
+        if (empty($attacks)) {
+            echo '<tr><td colspan="4">No attacks recorded.</td></tr>';
+        }
+        ?>
+    </table>
+    <div class="pagination_row">
+        <?php if ($page > 1) { ?>
+            <a class="btn btn-default btn-sm" href="?scr=ddoshistory&amp;search=<?php echo urlencode($search); ?>&amp;page=<?php echo $page - 1; ?>">&laquo; Prev</a>
+        <?php } ?>
+        <a class="btn btn-default btn-sm" href="?scr=ddoshistory&amp;search=<?php echo urlencode($search); ?>&amp;page=<?php echo $page + 1; ?>">Next &raquo;</a>
+    </div>
+</div>
+<?php
+$this->Widget->end();

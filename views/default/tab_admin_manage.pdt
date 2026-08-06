@@ -1,0 +1,18 @@
+<div class="pad">
+    <?php
+    if (!empty($is_assigned)) {
+        ?>
+        <p>
+            ReliableSite server <strong><?php echo $this->Html->safe($server_label !== '' ? $server_label : $server_id); ?></strong>
+            is assigned to this service<?php echo ($username !== '' ? ' (customer ' . $this->Html->safe($username) . ')' : ''); ?>.
+        </p>
+        <a class="btn btn-primary" href="<?php echo $this->Html->safe($manage_link); ?>">Manage Server</a>
+        <?php
+    } else {
+        ?>
+        <p>No server is assigned to this service yet.</p>
+        <a class="btn btn-primary" href="<?php echo $this->Html->safe($assign_link); ?>">Go to Pending Orders</a>
+        <?php
+    }
+    ?>
+</div>
