@@ -1,5 +1,5 @@
 {
-    "version": "2.2.0",
+    "version": "2.3.0",
     "name": "Reliablesite.name",
     "description": "Reliablesite.description",
     "authors": [
@@ -8,6 +8,7 @@
             "url": "https://www.reliablesite.net"
         }
     ],
+    "logo": "views/default/images/logo.png",
     "package": {
         "name_key": "reliablesite_server_label"
     },

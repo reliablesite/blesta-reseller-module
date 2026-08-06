@@ -17,7 +17,7 @@
 class Reliablesite extends Module
 {
     /** @var string Module version */
-    const RS_VERSION = '2.2.0';
+    const RS_VERSION = '2.3.0';
 
     /** @var string AskBrian (Sales Engineer) reseller web-chat endpoint */
     const BRIAN_API_URL = 'https://api-brian.reliablesite.net/api/web-chat-reslr';
@@ -678,7 +678,7 @@ class Reliablesite extends Module
         return $fields;
     }
 
-    public function addPackage(array $vars = null)
+    public function addPackage(?array $vars = null)
     {
         $meta = [];
         if (isset($vars['meta']) && is_array($vars['meta'])) {
@@ -690,7 +690,7 @@ class Reliablesite extends Module
         return $meta;
     }
 
-    public function editPackage($package, array $vars = null)
+    public function editPackage($package, ?array $vars = null)
     {
         return $this->addPackage($vars);
     }
@@ -721,7 +721,7 @@ class Reliablesite extends Module
      *
      * @return array Service field list
      */
-    public function addService($package, array $vars = null, $parent_package = null, $parent_service = null, $status = 'pending')
+    public function addService($package, ?array $vars = null, $parent_package = null, $parent_service = null, $status = 'pending')
     {
         $use_module = !isset($vars['use_module']) || $vars['use_module'] === 'true';
         $username = '';
@@ -767,7 +767,7 @@ class Reliablesite extends Module
      *
      * @return array Service field list
      */
-    public function editService($package, $service, array $vars = null, $parent_package = null, $parent_service = null)
+    public function editService($package, $service, ?array $vars = null, $parent_package = null, $parent_service = null)
     {
         $current = $this->serviceFieldsToObject($service->fields);
         $out = [];
@@ -836,12 +836,12 @@ class Reliablesite extends Module
         return null;
     }
 
-    public function validateService($package, array $vars = null)
+    public function validateService($package, ?array $vars = null)
     {
         return true;
     }
 
-    public function validateServiceEdit($service, array $vars = null)
+    public function validateServiceEdit($service, ?array $vars = null)
     {
         return true;
     }
@@ -963,7 +963,7 @@ class Reliablesite extends Module
     /**
      * Client self-service "Manage Server" tab with sub-page routing (?p=).
      */
-    public function tabClientManage($package, $service, array $get = null, array $post = null, array $files = null)
+    public function tabClientManage($package, $service, ?array $get = null, ?array $post = null, ?array $files = null)
     {
         $fields = $this->serviceFieldsToObject($service->fields);
         $server_id = isset($fields->reliablesite_server_id) ? $fields->reliablesite_server_id : '';
@@ -980,7 +980,7 @@ class Reliablesite extends Module
     /**
      * Admin per-service tab: links to assign/manage the server.
      */
-    public function tabAdminManage($package, $service, array $get = null, array $post = null, array $files = null)
+    public function tabAdminManage($package, $service, ?array $get = null, ?array $post = null, ?array $files = null)
     {
         $this->setMyModule();
         $fields = $this->serviceFieldsToObject($service->fields);
