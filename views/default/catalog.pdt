@@ -5,9 +5,9 @@ $this->Widget->create($this->_('Reliablesite.catalog.box_title', true));
 <div class="inner">
     <div class="mb-2">
         <a class="btn btn-primary btn-sm" href="?scr=catalog&amp;action=syncnow">Sync now</a>
-        <a class="btn btn-default btn-sm" href="?scr=catalog&amp;action=importall" onclick="return confirm('Import every catalog product that is not already imported?');">Import all</a>
-        <a class="btn btn-default btn-sm" href="?scr=catalog&amp;action=reformat" onclick="return confirm('Rewrite names/descriptions of all imported (non-frozen) products?');">Re-format names</a>
-        <a class="btn btn-default btn-sm" href="?scr=catalog&amp;refresh=1">Refresh catalog</a>
+        <a class="btn btn-outline-secondary btn-sm rs-confirm rs-confirm-warning" href="?scr=catalog&amp;action=importall" data-confirm-title="Import all products" data-confirm-button="Import all" data-confirm-message="Import every catalog product that is not already imported?">Import all</a>
+        <a class="btn btn-outline-secondary btn-sm rs-confirm rs-confirm-warning" href="?scr=catalog&amp;action=reformat" data-confirm-title="Re-format names" data-confirm-button="Re-format" data-confirm-message="Rewrite names and descriptions of all imported, non-frozen products?">Re-format names</a>
+        <a class="btn btn-outline-secondary btn-sm" href="?scr=catalog&amp;refresh=1">Refresh catalog</a>
     </div>
     <?php
     if (!empty($notice)) {
@@ -29,45 +29,47 @@ $this->Widget->create($this->_('Reliablesite.catalog.box_title', true));
     ?>
     <form method="get" class="rs-filter">
         <input type="hidden" name="scr" value="catalog" />
-        <input type="text" name="search" value="<?php echo $this->Html->safe($filters['search']); ?>" class="form-control" placeholder="Search name, SKU, CPU, location" style="width:240px;display:inline-block;" />
-        <select name="in_stock" class="form-control" style="width:auto;display:inline-block;">
+        <input type="text" name="search" value="<?php echo $this->Html->safe($filters['search']); ?>" class="form-control d-inline-block" placeholder="Search name, SKU, CPU, location" style="width:240px" />
+        <select name="in_stock" class="form-select d-inline-block w-auto">
             <option value=""<?php echo $sel($filters['in_stock'], ''); ?>>All stock</option>
             <option value="1"<?php echo $sel($filters['in_stock'], '1'); ?>>In stock only</option>
             <option value="0"<?php echo $sel($filters['in_stock'], '0'); ?>>Out of stock only</option>
         </select>
-        <select name="location" class="form-control" style="width:auto;display:inline-block;">
+        <select name="location" class="form-select d-inline-block w-auto">
             <option value="">All locations</option>
             <?php foreach ($locations as $loc) { ?>
                 <option value="<?php echo $this->Html->safe($loc); ?>"<?php echo $sel($filters['location'], $loc); ?>><?php echo $this->Html->safe($loc); ?></option>
             <?php } ?>
         </select>
-        <select name="profile" class="form-control" style="width:auto;display:inline-block;">
+        <select name="profile" class="form-select d-inline-block w-auto">
             <option value=""<?php echo $sel($filters['profile'], ''); ?>>All profiles</option>
             <option value="standard"<?php echo $sel($filters['profile'], 'standard'); ?>>Standard</option>
             <option value="efi"<?php echo $sel($filters['profile'], 'efi'); ?>>EFI / NVMe</option>
             <option value="storage"<?php echo $sel($filters['profile'], 'storage'); ?>>Storage</option>
         </select>
-        <select name="imported" class="form-control" style="width:auto;display:inline-block;">
+        <select name="imported" class="form-select d-inline-block w-auto">
             <option value=""<?php echo $sel($filters['imported'], ''); ?>>All</option>
             <option value="1"<?php echo $sel($filters['imported'], '1'); ?>>Imported</option>
             <option value="0"<?php echo $sel($filters['imported'], '0'); ?>>Not imported</option>
         </select>
-        <button type="submit" class="btn btn-default btn-sm">Filter</button>
-        <a class="btn btn-default btn-sm" href="?scr=catalog">Clear</a>
+        <button type="submit" class="btn btn-outline-secondary btn-sm">Filter</button>
+        <a class="btn btn-outline-secondary btn-sm" href="?scr=catalog">Clear</a>
         <span class="rs-count">Showing <strong><?php echo (int) $shown_count; ?></strong> of <?php echo (int) $total_count; ?></span>
     </form>
     <table class="table">
-        <tr class="heading_row">
-            <td>SKU</td>
-            <td>Product</td>
-            <td>CPU</td>
-            <td>Profile</td>
-            <td>Location</td>
-            <td>Stock</td>
-            <td>Monthly (base)</td>
-            <td>Imported</td>
-            <td>Actions</td>
+        <thead>
+        <tr>
+            <th>SKU</th>
+            <th>Product</th>
+            <th>CPU</th>
+            <th>Profile</th>
+            <th>Location</th>
+            <th>Stock</th>
+            <th>Monthly (base)</th>
+            <th>Imported</th>
+            <th>Actions</th>
         </tr>
+        </thead>
         <?php
         foreach ($products as $row) {
             $invId = $row['_inv_id'];
@@ -80,20 +82,20 @@ $this->Widget->create($this->_('Reliablesite.catalog.box_title', true));
                 <td><?php echo $this->Html->safe($invId); ?></td>
                 <td><?php echo $this->Html->safe($name); ?></td>
                 <td><?php echo $this->Html->safe($cpu !== '' ? $cpu : '-'); ?></td>
-                <td><span class="label label-default"><?php echo $this->Html->safe($row['_profile']); ?></span></td>
+                <td><span class="badge text-bg-secondary"><?php echo $this->Html->safe($row['_profile']); ?></span></td>
                 <td><?php echo $this->Html->safe(isset($row['data_center']) ? $row['data_center'] : '-'); ?></td>
                 <td>
-                    <span class="label <?php echo ($stock > 0 ? 'label-success' : 'label-default'); ?>"><?php echo $stock; ?></span>
+                    <span class="badge <?php echo ($stock > 0 ? 'text-bg-success' : 'text-bg-secondary'); ?>"><?php echo $stock; ?></span>
                 </td>
                 <td><?php echo $row['_base_price'] > 0 ? ('$' . number_format($row['_base_price'], 2)) : '-'; ?></td>
                 <td>
                     <?php
                     if ($row['_frozen']) {
-                        echo '<span class="label label-warning">Imported (frozen)</span>';
+                        echo '<span class="badge text-bg-warning">Imported (frozen)</span>';
                     } elseif ($row['_imported']) {
-                        echo '<span class="label label-success">Imported</span>';
+                        echo '<span class="badge text-bg-success">Imported</span>';
                     } else {
-                        echo '<span class="label label-default">No</span>';
+                        echo '<span class="badge text-bg-secondary">No</span>';
                     }
                     ?>
                 </td>
@@ -108,11 +110,11 @@ $this->Widget->create($this->_('Reliablesite.catalog.box_title', true));
                     } else {
                         $pid = urlencode($row['_package_id']);
                         if ($row['_frozen']) {
-                            echo '<a class="btn btn-default btn-sm" href="?scr=catalog&amp;action=freeze&amp;package_id=' . $pid . '&amp;frozen=0">Resume sync</a> ';
+                            echo '<a class="btn btn-outline-secondary btn-sm" href="?scr=catalog&amp;action=freeze&amp;package_id=' . $pid . '&amp;frozen=0">Resume sync</a> ';
                         } else {
-                            echo '<a class="btn btn-default btn-sm" href="?scr=catalog&amp;action=freeze&amp;package_id=' . $pid . '&amp;frozen=1">Freeze</a> ';
+                            echo '<a class="btn btn-outline-secondary btn-sm" href="?scr=catalog&amp;action=freeze&amp;package_id=' . $pid . '&amp;frozen=1">Freeze</a> ';
                         }
-                        echo '<a class="btn btn-default btn-sm" href="?scr=catalog&amp;action=untrack&amp;package_id=' . $pid . '" onclick="return confirm(\'Stop tracking this product?\');">Untrack</a>';
+                        echo '<a class="btn btn-outline-secondary btn-sm rs-confirm" href="?scr=catalog&amp;action=untrack&amp;package_id=' . $pid . '" data-confirm-title="Untrack product" data-confirm-button="Untrack" data-confirm-message="Stop tracking this product?">Untrack</a>';
                     }
                     ?>
                 </td>
@@ -120,7 +122,7 @@ $this->Widget->create($this->_('Reliablesite.catalog.box_title', true));
             <?php
         }
         if (empty($products)) {
-            echo '<tr><td colspan="9">No catalog products match the current filters.</td></tr>';
+            echo '<tr><td colspan="9"><div class="text-center text-muted py-5"><i class="bi bi-box-seam" style="font-size:3rem;opacity:.3"></i><p class="mt-3 mb-0">No catalog products match the current filters.</p></div></td></tr>';
         }
         ?>
     </table>

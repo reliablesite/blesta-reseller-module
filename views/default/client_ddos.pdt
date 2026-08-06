@@ -108,11 +108,13 @@ $hasBlocks = !empty($server_blocks);
             <p class="text-muted mb-0"><em>No DDoS profile assignments for this server.</em></p>
         <?php } else { ?>
             <table class="table table-sm">
-                <tr class="heading_row">
-                    <td>Profile</td>
-                    <td>IP</td>
-                    <td></td>
+                <thead>
+                <tr>
+                    <th>Profile</th>
+                    <th>IP</th>
+                    <th></th>
                 </tr>
+                </thead>
                 <?php foreach ($protected as $entry) { ?>
                     <tr>
                         <td><?php echo $this->Html->safe($entry['profile_name']); ?></td>

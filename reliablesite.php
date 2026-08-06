@@ -3153,6 +3153,25 @@ class Reliablesite extends Module
     }
 
     /**
+     * Emits an idempotent <script> for a module script, using the same
+     * duplicate guard as styleTag().
+     *
+     * @param string $file Path relative to views/default/
+     * @return string
+     */
+    private function scriptTag($file)
+    {
+        $src = $this->assetUri($file);
+
+        return '<script type="text/javascript">(function(){'
+            . 'var s=' . json_encode($src) . ';'
+            . 'if(document.querySelector(\'script[data-rs-script="\'+s+\'"]\'))return;'
+            . 'var e=document.createElement("script");'
+            . 'e.type="text/javascript";e.src=s;e.setAttribute("data-rs-script",s);'
+            . 'document.head.appendChild(e);})();</script>';
+    }
+
+    /**
      * Wraps content in the scoped module shell.
      *
      * Admin gets the Paradigm sheet (Bootstrap 5, driven entirely by Paradigm's
@@ -3169,7 +3188,10 @@ class Reliablesite extends Module
     private function wrap($html, $admin = true)
     {
         return $admin
-            ? $this->styleTag('css/rs-admin.css') . '<div class="rs-module rs-admin">' . $html . '</div>'
-            : $this->styleTag('css/rs-client.css') . '<div class="rs-module rs-client">' . $html . '</div>';
+            ? $this->styleTag('css/rs-admin.css')
+                . $this->scriptTag('js/rs-admin.js')
+                . '<div class="rs-module rs-admin">' . $html . '</div>'
+            : $this->styleTag('css/rs-client.css')
+                . '<div class="rs-module rs-client">' . $html . '</div>';
     }
 }

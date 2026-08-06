@@ -150,29 +150,22 @@
     min-height: 320px;
 }
 
+/* IP / MAC address cells */
+.rs-admin .rs-mono {
+    font-family: monospace;
+}
+
 /* ------------------------------------------------------------------ *
  * Legacy Blesta classes Paradigm does not cover inside a .card
  *
- * Paradigm styles `.table thead th`, but only scopes `tr.heading_row td`
- * under `.common_box_content` (application.css:31939), which module views
- * do not have - they render inside .card > .card-content > .card-body.
- * `.pagination_row` has no rule at all.
+ * Table headers used to be `<tr class="heading_row"><td>`, which Paradigm
+ * only styles under `.common_box_content` (application.css:31939) - a
+ * wrapper module views do not have, since they render inside
+ * .card > .card-content > .card-body. Those are now real `<thead><th>`
+ * elements, which Paradigm themes natively, so no shim is needed.
+ *
+ * `.pagination_row` still has no rule anywhere in the theme.
  * ------------------------------------------------------------------ */
-.rs-admin .table tr.heading_row td {
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-    font-size: .75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .5px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-[data-theme="light"] .rs-admin .table tr.heading_row td {
-    background: #f8f9fa;
-    color: #495057;
-}
-
 .rs-admin .pagination_row {
     display: flex;
     gap: .5rem;

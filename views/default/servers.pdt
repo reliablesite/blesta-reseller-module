@@ -13,33 +13,35 @@ $this->Widget->create($this->_('Reliablesite.servers.box_title', true));
     ?>
     <form method="get" class="mb-2">
         <input type="hidden" name="scr" value="servers" />
-        <input type="text" name="search" value="<?php echo $this->Html->safe($search); ?>" class="form-control" placeholder="Search server id / name" style="width:220px;display:inline-block;" />
+        <input type="text" name="search" value="<?php echo $this->Html->safe($search); ?>" class="form-control d-inline-block" placeholder="Search server id / name" style="width:220px" />
         <label class="inline"><input type="checkbox" name="unassigned" value="1" <?php echo ($unassigned === 'true' ? 'checked' : ''); ?> /> Unassigned only</label>
-        <button type="submit" class="btn btn-default btn-sm">Search</button>
+        <button type="submit" class="btn btn-outline-secondary btn-sm">Search</button>
     </form>
     <table class="table">
-        <tr class="heading_row">
-            <td>Server ID</td>
-            <td>Label</td>
-            <td>Status</td>
-            <td>Assigned To</td>
-            <td></td>
+        <thead>
+        <tr>
+            <th>Server ID</th>
+            <th>Label</th>
+            <th>Status</th>
+            <th>Assigned To</th>
+            <th></th>
         </tr>
+        </thead>
         <?php
         foreach ($servers as $srv) {
             $sid = isset($srv['serverId']) ? $srv['serverId'] : (isset($srv['id']) ? $srv['id'] : '');
             $status = isset($srv['status']) ? $srv['status'] : '';
-            $statusCls = 'label-default';
+            $statusCls = 'text-bg-secondary';
             switch (strtolower($status)) {
                 case 'active':
-                    $statusCls = 'label-success';
+                    $statusCls = 'text-bg-success';
                     break;
                 case 'suspended':
-                    $statusCls = 'label-warning';
+                    $statusCls = 'text-bg-warning';
                     break;
                 case 'cancelled':
                 case 'terminated':
-                    $statusCls = 'label-danger';
+                    $statusCls = 'text-bg-danger';
                     break;
             }
             $link = isset($assigned[(string) $sid]) ? $assigned[(string) $sid] : null;
@@ -47,7 +49,7 @@ $this->Widget->create($this->_('Reliablesite.servers.box_title', true));
             <tr>
                 <td>#<?php echo $this->Html->safe($sid); ?></td>
                 <td><?php echo $this->Html->safe(isset($srv['serverLabel']) ? $srv['serverLabel'] : (isset($srv['label']) ? $srv['label'] : '')); ?></td>
-                <td><?php echo $status !== '' ? '<span class="label ' . $statusCls . '">' . $this->Html->safe($status) . '</span>' : '-'; ?></td>
+                <td><?php echo $status !== '' ? '<span class="badge ' . $statusCls . '">' . $this->Html->safe($status) . '</span>' : '-'; ?></td>
                 <td>
                     <?php
                     if ($link) {
@@ -55,24 +57,24 @@ $this->Widget->create($this->_('Reliablesite.servers.box_title', true));
                             . $this->Html->safe($link['name']) . '</a> '
                             . '<small class="text-muted">(service #' . $this->Html->safe($link['service_id']) . ')</small>';
                     } else {
-                        echo '<span class="label label-success">Unassigned</span>';
+                        echo '<span class="badge text-bg-success">Unassigned</span>';
                     }
                     ?>
                 </td>
-                <td><a class="btn btn-default btn-sm" href="<?php echo $this->Html->safe($manage_base . '/?scr=manageserver&rsid=' . urlencode($sid)); ?>">Manage</a></td>
+                <td><a class="btn btn-outline-secondary btn-sm" href="<?php echo $this->Html->safe($manage_base . '/?scr=manageserver&rsid=' . urlencode($sid)); ?>">Manage</a></td>
             </tr>
             <?php
         }
         if (empty($servers)) {
-            echo '<tr><td colspan="5">No servers found.</td></tr>';
+            echo '<tr><td colspan="5"><div class="text-center text-muted py-5"><i class="bi bi-hdd-rack" style="font-size:3rem;opacity:.3"></i><p class="mt-3 mb-0">No servers found.</p></div></td></tr>';
         }
         ?>
     </table>
     <div class="pagination_row">
         <?php if ($page > 1) { ?>
-            <a class="btn btn-default btn-sm" href="?scr=servers&amp;search=<?php echo urlencode($search); ?>&amp;unassigned=<?php echo ($unassigned === 'true' ? '1' : '0'); ?>&amp;page=<?php echo $page - 1; ?>">&laquo; Prev</a>
+            <a class="btn btn-outline-secondary btn-sm" href="?scr=servers&amp;search=<?php echo urlencode($search); ?>&amp;unassigned=<?php echo ($unassigned === 'true' ? '1' : '0'); ?>&amp;page=<?php echo $page - 1; ?>">&laquo; Prev</a>
         <?php } ?>
-        <a class="btn btn-default btn-sm" href="?scr=servers&amp;search=<?php echo urlencode($search); ?>&amp;unassigned=<?php echo ($unassigned === 'true' ? '1' : '0'); ?>&amp;page=<?php echo $page + 1; ?>">Next &raquo;</a>
+        <a class="btn btn-outline-secondary btn-sm" href="?scr=servers&amp;search=<?php echo urlencode($search); ?>&amp;unassigned=<?php echo ($unassigned === 'true' ? '1' : '0'); ?>&amp;page=<?php echo $page + 1; ?>">Next &raquo;</a>
     </div>
 </div>
 <?php

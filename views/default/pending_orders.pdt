@@ -19,14 +19,16 @@ $this->Widget->create($this->_('Reliablesite.pending.box_title', true));
     } else {
         ?>
         <table class="table">
-            <tr class="heading_row">
-                <td>Service</td>
-                <td>Customer</td>
-                <td>Ordered</td>
-                <td><?php $this->_('Reliablesite.order.col_order'); ?></td>
-                <td>Assign Server</td>
-                <td></td>
+            <thead>
+            <tr>
+                <th>Service</th>
+                <th>Customer</th>
+                <th>Ordered</th>
+                <th><?php $this->_('Reliablesite.order.col_order'); ?></th>
+                <th>Assign Server</th>
+                <th></th>
             </tr>
+            </thead>
             <?php
             foreach ($pending as $svc) {
                 $sid = (int) $svc->id;
@@ -68,12 +70,12 @@ $this->Widget->create($this->_('Reliablesite.pending.box_title', true));
                         ?>
                     </td>
                     <td>
-                        <form method="get" style="display:inline;">
+                        <form method="get" class="d-inline">
                             <input type="hidden" name="scr" value="pendingorders" />
                             <input type="hidden" name="action" value="assign" />
                             <input type="hidden" name="service_id" value="<?php echo $this->Html->safe($svc->id); ?>" />
                             <input type="hidden" name="rs_server_label" value="" />
-                            <select name="rs_server_id" class="form-control" style="width:280px;display:inline-block;"
+                            <select name="rs_server_id" class="form-select d-inline-block" style="width:280px"
                                 onchange="this.form.rs_server_label.value=this.options[this.selectedIndex].getAttribute('data-label')||'';">
                                 <option value="">-- Select a server --</option>
                                 <?php foreach ($server_options as $srvid => $opt) { ?>
@@ -84,11 +86,11 @@ $this->Widget->create($this->_('Reliablesite.pending.box_title', true));
                         </form>
                     </td>
                     <td>
-                        <form method="get" style="display:inline;" onsubmit="return confirm('Cancel this service?');">
+                        <form method="get" class="d-inline">
                             <input type="hidden" name="scr" value="pendingorders" />
                             <input type="hidden" name="action" value="cancel" />
                             <input type="hidden" name="service_id" value="<?php echo $this->Html->safe($svc->id); ?>" />
-                            <button type="submit" class="btn btn-danger btn-sm">Cancel</button>
+                            <button type="button" class="btn btn-danger btn-sm rs-confirm" data-confirm-title="Cancel service" data-confirm-button="Cancel service" data-confirm-message="Cancel this service?">Cancel</button>
                         </form>
                     </td>
                 </tr>

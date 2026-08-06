@@ -9,11 +9,13 @@ $this->Widget->create('DDoS Profiles');
     }
     ?>
     <table class="table">
-        <tr class="heading_row">
-            <td>Profile</td>
-            <td>Datacenter</td>
-            <td>Protected IPs</td>
+        <thead>
+        <tr>
+            <th>Profile</th>
+            <th>Datacenter</th>
+            <th>Protected IPs</th>
         </tr>
+        </thead>
         <?php
         foreach ((array) $profiles as $profile) {
             $name = '';
@@ -34,7 +36,7 @@ $this->Widget->create('DDoS Profiles');
             <?php
         }
         if (empty($profiles)) {
-            echo '<tr><td colspan="3">No DDoS profiles available.</td></tr>';
+            echo '<tr><td colspan="3"><div class="text-center text-muted py-5"><i class="bi bi-shield-check" style="font-size:3rem;opacity:.3"></i><p class="mt-3 mb-0">No DDoS profiles available.</p></div></td></tr>';
         }
         ?>
     </table>

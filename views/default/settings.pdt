@@ -46,19 +46,19 @@ $this->Widget->create($this->_('Reliablesite.settings.box_title', true));
             <li>
                 <?php
                 $this->Form->label($this->_('Reliablesite.row_meta.import_package_group', true), 'import_package_group');
-                $this->Form->fieldSelect('import_package_group', $group_options, (isset($vars->import_package_group) ? $vars->import_package_group : null), ['id' => 'import_package_group', 'class' => 'form-control']);
+                $this->Form->fieldSelect('import_package_group', $group_options, (isset($vars->import_package_group) ? $vars->import_package_group : null), ['id' => 'import_package_group', 'class' => 'form-select']);
                 ?>
             </li>
             <li>
                 <?php
                 $this->Form->label($this->_('Reliablesite.row_meta.import_currency_code', true), 'import_currency_code');
-                $this->Form->fieldSelect('import_currency_code', $currency_options, (isset($vars->import_currency_code) ? $vars->import_currency_code : null), ['id' => 'import_currency_code', 'class' => 'form-control']);
+                $this->Form->fieldSelect('import_currency_code', $currency_options, (isset($vars->import_currency_code) ? $vars->import_currency_code : null), ['id' => 'import_currency_code', 'class' => 'form-select']);
                 ?>
             </li>
             <li>
                 <?php
                 $this->Form->label($this->_('Reliablesite.row_meta.markup_type', true), 'markup_type');
-                $this->Form->fieldSelect('markup_type', ['percent' => $this->_('Reliablesite.settings.markup_percent', true), 'flat' => $this->_('Reliablesite.settings.markup_flat', true)], (isset($vars->markup_type) ? $vars->markup_type : 'percent'), ['id' => 'markup_type', 'class' => 'form-control']);
+                $this->Form->fieldSelect('markup_type', ['percent' => $this->_('Reliablesite.settings.markup_percent', true), 'flat' => $this->_('Reliablesite.settings.markup_flat', true)], (isset($vars->markup_type) ? $vars->markup_type : 'percent'), ['id' => 'markup_type', 'class' => 'form-select']);
                 ?>
             </li>
             <li>
@@ -70,7 +70,7 @@ $this->Widget->create($this->_('Reliablesite.settings.box_title', true));
             <li>
                 <?php
                 $this->Form->label($this->_('Reliablesite.row_meta.cycle_mode', true), 'cycle_mode');
-                $this->Form->fieldSelect('cycle_mode', ['monthly_only' => $this->_('Reliablesite.settings.cycle_monthly', true), 'all' => $this->_('Reliablesite.settings.cycle_all', true)], (isset($vars->cycle_mode) ? $vars->cycle_mode : 'monthly_only'), ['id' => 'cycle_mode', 'class' => 'form-control']);
+                $this->Form->fieldSelect('cycle_mode', ['monthly_only' => $this->_('Reliablesite.settings.cycle_monthly', true), 'all' => $this->_('Reliablesite.settings.cycle_all', true)], (isset($vars->cycle_mode) ? $vars->cycle_mode : 'monthly_only'), ['id' => 'cycle_mode', 'class' => 'form-select']);
                 ?>
             </li>
             <li>
@@ -95,7 +95,7 @@ $this->Widget->create($this->_('Reliablesite.settings.box_title', true));
             <li>
                 <?php
                 $this->Form->label($this->_('Reliablesite.row_meta.sync_frequency', true), 'sync_frequency');
-                $this->Form->fieldSelect('sync_frequency', ['15' => '15', '30' => '30', '45' => '45', '60' => '60'], (isset($vars->sync_frequency) ? $vars->sync_frequency : '60'), ['id' => 'sync_frequency', 'class' => 'form-control']);
+                $this->Form->fieldSelect('sync_frequency', ['15' => '15', '30' => '30', '45' => '45', '60' => '60'], (isset($vars->sync_frequency) ? $vars->sync_frequency : '60'), ['id' => 'sync_frequency', 'class' => 'form-select']);
                 ?>
             </li>
         </ul>
@@ -116,7 +116,7 @@ $this->Widget->create($this->_('Reliablesite.settings.box_title', true));
                     if ($current_pm !== null && $current_pm !== '' && !isset($pm_options[$current_pm])) {
                         $pm_options[$current_pm] = $current_pm;
                     }
-                    $this->Form->fieldSelect('order_default_payment_method', $pm_options, $current_pm, ['id' => 'order_default_payment_method', 'class' => 'form-control']);
+                    $this->Form->fieldSelect('order_default_payment_method', $pm_options, $current_pm, ['id' => 'order_default_payment_method', 'class' => 'form-select']);
                 } else {
                     $this->Form->fieldText('order_default_payment_method', $current_pm, ['id' => 'order_default_payment_method', 'class' => 'form-control', 'placeholder' => 'paypal']);
                 }
@@ -126,7 +126,7 @@ $this->Widget->create($this->_('Reliablesite.settings.box_title', true));
         </ul>
     </div>
     <div class="button_row">
-        <button type="submit" class="btn btn-primary float-right"><?php $this->_('Reliablesite.settings.save'); ?></button>
+        <button type="submit" class="btn btn-primary float-end"><?php $this->_('Reliablesite.settings.save'); ?></button>
     </div>
     <?php
     $this->Form->end();

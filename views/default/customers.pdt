@@ -21,9 +21,9 @@ $this->Widget->create($this->_('Reliablesite.customers.box_title', true));
         $this->Form->create($add_action);
         ?>
         <input type="hidden" name="rs_action" value="add_customer" />
-        <input type="text" name="username" class="form-control" placeholder="Username" style="width:160px;display:inline-block;" />
-        <input type="email" name="email" class="form-control" placeholder="Email" style="width:220px;display:inline-block;" />
-        <input type="password" name="password" class="form-control" placeholder="Password" style="width:160px;display:inline-block;" />
+        <input type="text" name="username" class="form-control d-inline-block" placeholder="Username" style="width:160px" />
+        <input type="email" name="email" class="form-control d-inline-block" placeholder="Email" style="width:220px" />
+        <input type="password" name="password" class="form-control d-inline-block" placeholder="Password" style="width:160px" />
         <button type="submit" class="btn btn-primary btn-sm">Add</button>
         <?php
         $this->Form->end();
@@ -32,17 +32,19 @@ $this->Widget->create($this->_('Reliablesite.customers.box_title', true));
     </div>
     <form method="get" class="mb-2">
         <input type="hidden" name="scr" value="customers" />
-        <input type="text" name="search" value="<?php echo $this->Html->safe($search); ?>" class="form-control" placeholder="Search" style="width:220px;display:inline-block;" />
-        <button type="submit" class="btn btn-default btn-sm">Search</button>
+        <input type="text" name="search" value="<?php echo $this->Html->safe($search); ?>" class="form-control d-inline-block" placeholder="Search" style="width:220px" />
+        <button type="submit" class="btn btn-outline-secondary btn-sm">Search</button>
     </form>
     <table class="table">
-        <tr class="heading_row">
-            <td>ID</td>
-            <td>Username</td>
-            <td>Email</td>
-            <td>Linked Client</td>
-            <td>Assigned Server(s)</td>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Linked Client</th>
+            <th>Assigned Server(s)</th>
         </tr>
+        </thead>
         <?php
         foreach ($customers as $cust) {
             $email = isset($cust['emailAddress']) ? $cust['emailAddress'] : (isset($cust['email']) ? $cust['email'] : '');
@@ -71,10 +73,10 @@ $this->Widget->create($this->_('Reliablesite.customers.box_title', true));
                     } else {
                         foreach ($servers as $s) {
                             $lbl = $s['server_label'] !== '' ? $s['server_label'] : ('#' . $s['server_id']);
-                            echo '<div class="rs-actions" style="margin-bottom:4px;">';
-                            echo '<span class="label label-info">' . $this->Html->safe($lbl) . '</span>';
-                            echo '<a class="btn btn-danger btn-sm" href="?scr=customers&amp;action=unassign&amp;rsid='
-                                . urlencode($s['server_id']) . '" onclick="return confirm(\'Unassign this server? The service returns to Pending Orders.\');">Unassign</a>';
+                            echo '<div class="rs-actions mb-1">';
+                            echo '<span class="badge text-bg-info">' . $this->Html->safe($lbl) . '</span>';
+                            echo '<a class="btn btn-danger btn-sm rs-confirm" href="?scr=customers&amp;action=unassign&amp;rsid='
+                                . urlencode($s['server_id']) . '" data-confirm-title="Unassign server" data-confirm-button="Unassign" data-confirm-message="Unassign this server? The service returns to Pending Orders.">Unassign</a>';
                             echo '</div>';
                         }
                     }
@@ -84,15 +86,15 @@ $this->Widget->create($this->_('Reliablesite.customers.box_title', true));
             <?php
         }
         if (empty($customers)) {
-            echo '<tr><td colspan="5">No customers found.</td></tr>';
+            echo '<tr><td colspan="5"><div class="text-center text-muted py-5"><i class="bi bi-people" style="font-size:3rem;opacity:.3"></i><p class="mt-3 mb-0">No customers found.</p></div></td></tr>';
         }
         ?>
     </table>
     <div class="pagination_row">
         <?php if ($page > 1) { ?>
-            <a class="btn btn-default btn-sm" href="?scr=customers&amp;search=<?php echo urlencode($search); ?>&amp;page=<?php echo $page - 1; ?>">&laquo; Prev</a>
+            <a class="btn btn-outline-secondary btn-sm" href="?scr=customers&amp;search=<?php echo urlencode($search); ?>&amp;page=<?php echo $page - 1; ?>">&laquo; Prev</a>
         <?php } ?>
-        <a class="btn btn-default btn-sm" href="?scr=customers&amp;search=<?php echo urlencode($search); ?>&amp;page=<?php echo $page + 1; ?>">Next &raquo;</a>
+        <a class="btn btn-outline-secondary btn-sm" href="?scr=customers&amp;search=<?php echo urlencode($search); ?>&amp;page=<?php echo $page + 1; ?>">Next &raquo;</a>
     </div>
 </div>
 <?php

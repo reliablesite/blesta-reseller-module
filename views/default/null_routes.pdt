@@ -16,17 +16,19 @@ $this->Widget->create($this->_('Reliablesite.null_routes.box_title', true));
         <form method="get">
             <input type="hidden" name="scr" value="nullroutes" />
             <input type="hidden" name="action" value="add" />
-            <input type="text" name="ip" class="form-control" placeholder="IP address" style="width:200px;display:inline-block;" />
+            <input type="text" name="ip" class="form-control d-inline-block" placeholder="IP address" style="width:200px" />
             <button type="submit" class="btn btn-primary btn-sm">Add</button>
         </form>
     </div>
     <table class="table">
-        <tr class="heading_row">
-            <td>IP</td>
-            <td>Added</td>
-            <td>Scheduled Removal</td>
-            <td></td>
+        <thead>
+        <tr>
+            <th>IP</th>
+            <th>Added</th>
+            <th>Scheduled Removal</th>
+            <th></th>
         </tr>
+        </thead>
         <?php
         foreach ((array) $routes as $r) {
             $ip = isset($r['ipAddress']) ? $r['ipAddress'] : (isset($r['nullRouteIP']) ? $r['nullRouteIP'] : (isset($r['ip']) ? $r['ip'] : ''));
@@ -42,15 +44,15 @@ $this->Widget->create($this->_('Reliablesite.null_routes.box_title', true));
             <?php
         }
         if (empty($routes)) {
-            echo '<tr><td colspan="4">No null routes.</td></tr>';
+            echo '<tr><td colspan="4"><div class="text-center text-muted py-5"><i class="bi bi-slash-circle" style="font-size:3rem;opacity:.3"></i><p class="mt-3 mb-0">No null routes.</p></div></td></tr>';
         }
         ?>
     </table>
     <div class="pagination_row">
         <?php if ($page > 1) { ?>
-            <a class="btn btn-default btn-sm" href="?scr=nullroutes&amp;search=<?php echo urlencode($search); ?>&amp;page=<?php echo $page - 1; ?>">&laquo; Prev</a>
+            <a class="btn btn-outline-secondary btn-sm" href="?scr=nullroutes&amp;search=<?php echo urlencode($search); ?>&amp;page=<?php echo $page - 1; ?>">&laquo; Prev</a>
         <?php } ?>
-        <a class="btn btn-default btn-sm" href="?scr=nullroutes&amp;search=<?php echo urlencode($search); ?>&amp;page=<?php echo $page + 1; ?>">Next &raquo;</a>
+        <a class="btn btn-outline-secondary btn-sm" href="?scr=nullroutes&amp;search=<?php echo urlencode($search); ?>&amp;page=<?php echo $page + 1; ?>">Next &raquo;</a>
     </div>
 </div>
 <?php

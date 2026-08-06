@@ -17,7 +17,7 @@ $this->Widget->create($this->_('Reliablesite.askbrian.box_title', true));
                 <div class="rs-brian-who">Brian &middot; Sales Engineer</div>
                 <div class="rs-brian-sub">AI assistant for ReliableSite reseller sales &amp; product questions</div>
             </div>
-            <button type="button" class="btn btn-default btn-sm rs-brian-new" id="rs-brian-new">
+            <button type="button" class="btn btn-outline-secondary btn-sm rs-brian-new" id="rs-brian-new">
                 <i class="bi bi-plus-lg"></i> New chat
             </button>
         </div>
