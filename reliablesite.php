@@ -3120,12 +3120,19 @@ class Reliablesite extends Module
      * Builds a web path to one of this module's view assets. WEBDIR-relative so
      * it resolves correctly under subdirectory installs and index.php routing.
      *
+     * On installs without mod_rewrite, WEBDIR carries an 'index.php/' segment
+     * for routing. Static assets must not go through the router, so strip it -
+     * this mirrors what minphp's View does when it builds $this->view_dir
+     * (vendors/minphp/bridge/src/Lib/View.php:112).
+     *
      * @param string $file Path relative to views/default/
      * @return string
      */
     private function assetUri($file)
     {
-        return WEBDIR . 'components/modules/reliablesite/views/default/' . $file;
+        $web_dir = str_replace('index.php/', '', WEBDIR);
+
+        return $web_dir . 'components/modules/reliablesite/views/default/' . $file;
     }
 
     /**
