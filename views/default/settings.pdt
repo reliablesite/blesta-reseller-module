@@ -33,7 +33,7 @@ $label = function ($for, $text, $tip = null) {
 
     <h6 class="form-section-header">Connection</h6>
     <div class="row g-3">
-        <div class="col-md-5">
+        <div class="col-md-6">
             <?php $label(
                 'account_name',
                 $this->_('Reliablesite.row_meta.account_name', true),
@@ -51,7 +51,7 @@ $label = function ($for, $text, $tip = null) {
             <?php } ?>
         </div>
 
-        <div class="col-md-7">
+        <div class="col-md-6">
             <?php $label(
                 'api_key',
                 $this->_('Reliablesite.row_meta.api_key', true),
@@ -135,7 +135,7 @@ $label = function ($for, $text, $tip = null) {
                 </label>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6">
             <?php $label(
                 'sync_frequency',
                 $this->_('Reliablesite.row_meta.sync_frequency', true),
