@@ -4,7 +4,6 @@ foreach ((array) $errors as $e) {
 }
 
 $this->Widget->clear();
-$this->Widget->setLinkButtons($tool_buttons ?? []);
 $this->Widget->setBodyWrapper(false);
 $this->Widget->create('DDoS Profiles', ['id' => 'rs_ddos_profiles']);
 

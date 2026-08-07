@@ -586,7 +586,6 @@ class Reliablesite extends Module
         $this->view->set('module', $module);
         $this->view->set('needs_credential', false);
         $this->view->set('nav', $this->manageNav('home'));
-        $this->view->set('tool_buttons', $this->toolButtons('home'));
         $this->view->set('account_name', $account_name);
         $this->view->set('stats', [
             'pending' => (int) $pending,
@@ -1246,7 +1245,6 @@ class Reliablesite extends Module
             'currency_options' => $currency_options,
             'payment_methods' => $payment_methods,
             'home_link' => $this->base_uri . 'settings/company/modules/manage/' . $module_id,
-            'tool_buttons' => $this->toolButtons('settings'),
         ]);
 
         // Show the tab bar only when a credential exists (edit mode), inside the wrapper.
@@ -3068,43 +3066,20 @@ class Reliablesite extends Module
     }
 
     /**
-     * The module's tools, shown as icon buttons in each card's header rather
-     * than as navigation entries.
+     * The module's tools.
      *
-     * Ask Brian is an assistant and Settings is configuration; neither is a
-     * place you browse to while working, so they sit with the page actions
-     * where Paradigm puts them instead of taking space in the nav.
+     * Kept out of navSections() because they are not places you browse to
+     * while working - they sit at the far right of the nav as icons, visibly
+     * their own group. Icon-only so they cost almost no width.
      *
-     * @param string $section The active section, so the current tool is not
-     *  offered as a link to itself
-     * @return array In the shape Widget::setLinkButtons() expects
+     * @return array
      */
-    private function toolButtons($section = '')
+    private function navTools()
     {
-        $tools = [
-            'askbrian' => ['label' => 'Ask Brian', 'icon' => 'bi bi-robot'],
-            'settings' => ['label' => 'Settings', 'icon' => 'bi bi-gear'],
+        return [
+            'askbrian' => ['label' => 'Ask Brian', 'icon' => 'bi-robot'],
+            'settings' => ['label' => 'Settings', 'icon' => 'bi-gear'],
         ];
-
-        $buttons = [];
-        foreach ($tools as $key => $tool) {
-            if ($key === $section) {
-                continue;
-            }
-
-            $buttons[] = [
-                // Icon only: the title carries the meaning and the header is
-                // already carrying the page's own actions.
-                'name' => '',
-                'icon' => $tool['icon'],
-                'attributes' => [
-                    'href' => $this->navUrl($key),
-                    'title' => $tool['label'],
-                ],
-            ];
-        }
-
-        return $buttons;
     }
 
     /**
@@ -3246,6 +3221,21 @@ class Reliablesite extends Module
             $items .= $item;
         }
 
+        // Tools, pinned to the right end of the same row. Icon-only, with a
+        // tooltip for the label - Paradigm auto-binds [data-bs-toggle=tooltip].
+        $first = true;
+        foreach ($this->navTools() as $key => $tool) {
+            $items .= '<li class="nav-item rs-nav-tool' . ($first ? ' rs-nav-tool-first' : '') . '">'
+                . '<a class="nav-link' . ($key === $section ? ' active' : '') . '"'
+                . ' href="' . htmlspecialchars($this->navUrl($key), ENT_QUOTES, 'UTF-8') . '"'
+                . ' title="' . htmlspecialchars($tool['label'], ENT_QUOTES, 'UTF-8') . '"'
+                . ' data-bs-toggle="tooltip" data-bs-placement="top"'
+                . ' aria-label="' . htmlspecialchars($tool['label'], ENT_QUOTES, 'UTF-8') . '">'
+                . '<i class="bi ' . $tool['icon'] . '"></i>'
+                . '</a></li>';
+            $first = false;
+        }
+
         return '<ul class="nav rs-nav" role="tablist">' . $items . '</ul>';
     }
 
@@ -3261,8 +3251,6 @@ class Reliablesite extends Module
      */
     private function renderManageScreen($view, $section, $active, array $data)
     {
-        $data['tool_buttons'] = $this->toolButtons($section);
-
         return $this->wrap($this->manageNav($section, $active) . $this->renderViewRaw($view, $data));
     }
 

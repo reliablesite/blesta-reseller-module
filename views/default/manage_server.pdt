@@ -20,7 +20,7 @@ $link_buttons = [[
 
 if ($server_id === '') {
     $this->Widget->clear();
-    $this->Widget->setLinkButtons(array_merge($link_buttons, $tool_buttons ?? []));
+    $this->Widget->setLinkButtons($link_buttons);
     $this->Widget->create('Manage Server', ['id' => 'rs_manage_server']);
     ?>
     <div class="text-center text-muted py-5">
@@ -59,7 +59,7 @@ foreach ($pages as $key => $meta) {
 // module bar above stays a single row and marks Provisioning > Servers as
 // current. "Back to servers" is the way up.
 $this->Widget->clear();
-$this->Widget->setLinkButtons(array_merge($link_buttons, $tool_buttons ?? []));
+$this->Widget->setLinkButtons($link_buttons);
 $this->Widget->setTabs($tabs);
 $this->Widget->setNavStyle('nav-tabs-custom');
 $this->Widget->create(

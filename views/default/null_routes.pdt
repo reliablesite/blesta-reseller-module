@@ -13,7 +13,6 @@ if (!empty($error)) {
 }
 
 $this->Widget->clear();
-$this->Widget->setLinkButtons($tool_buttons ?? []);
 $this->Widget->setBodyWrapper(false);
 $this->Widget->create($this->_('Reliablesite.null_routes.box_title', true), ['id' => 'rs_null_routes']);
 ?>

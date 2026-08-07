@@ -19,7 +19,6 @@ if (!empty($pending) && empty($server_options)) {
 }
 
 $this->Widget->clear();
-$this->Widget->setLinkButtons($tool_buttons ?? []);
 $this->Widget->setBodyWrapper(false);
 $this->Widget->create($this->_('Reliablesite.pending.box_title', true), ['id' => 'rs_pending_orders']);
 

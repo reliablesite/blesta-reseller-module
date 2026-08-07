@@ -26,9 +26,9 @@
  * Module navigation
  *
  * A single, unboxed tab row sitting directly above the card: plain links
- * for single-screen sections, dropdowns for grouped ones. Ask Brian and
- * Settings are not here at all - they are icon buttons in the card header
- * (see Reliablesite::toolButtons()), which keeps this row to four items.
+ * for single-screen sections, dropdowns for grouped ones, and the tools
+ * (Ask Brian, Settings) pinned to the right end as icons - inside the same
+ * row, but visibly their own group.
  *
  * No panel background or border, deliberately. With one, the row read as a
  * second bar stacked on the card instead of as the card's own tabs.
@@ -101,6 +101,41 @@
 /* The badge is a count, not a label - keep it hard right in the menu. */
 .rs-admin .rs-nav .dropdown-item .badge {
     margin-left: auto;
+}
+
+/* ---- tools, pinned to the right end of the row ---- */
+
+/* Pushing only the first tool takes up the slack, so the pair stays
+   together at the far end however wide the row is. */
+.rs-admin .rs-nav .rs-nav-tool-first {
+    margin-left: auto;
+    padding-left: 1rem;
+    border-left: 1px solid var(--border-color);
+}
+
+/* Icon-only, so they cost about the width of one word between them.
+   The row's gap is sized for labels, which is too airy for a pair of
+   icons - close it up and give them their own padding instead. */
+.rs-admin .rs-nav .rs-nav-tool + .rs-nav-tool {
+    margin-left: -1.1rem;
+}
+
+.rs-admin .rs-nav .rs-nav-tool .nav-link {
+    padding: .5rem .45rem;
+    font-size: 1rem;
+}
+
+.rs-admin .rs-nav .rs-nav-tool .nav-link i {
+    font-size: 1em;
+}
+
+/* Dropping to one line per group beats letting a tool wrap on its own. */
+@media (max-width: 575.98px) {
+    .rs-admin .rs-nav .rs-nav-tool-first {
+        margin-left: 0;
+        padding-left: 0;
+        border-left: 0;
+    }
 }
 
 /* ------------------------------------------------------------------ *
