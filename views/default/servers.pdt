@@ -3,15 +3,20 @@ foreach ((array) $errors as $e) {
     echo '<div class="alert alert-danger">' . $this->Html->safe(is_scalar($e) ? $e : json_encode($e)) . '</div>';
 }
 
-$has_filter = ($search !== '' || $unassigned === 'true');
+// serversScreen() defaults 'unassigned only' to true, so that on its own is
+// not a user-applied filter - only a search, or having turned it off, is.
+$has_filter = ($search !== '' || $unassigned !== 'true');
 
-// Search panel, revealed by the funnel button Widget adds to the card header.
-// Widget::setFilterHtml() passes this through verbatim (it only builds the
-// .filter-section-body wrapper for InputFields-driven filters), so we supply
-// the wrapper ourselves - that is the element Paradigm's toggle script slides.
+// Search panel. A Bootstrap collapse driven by the funnel button below, not
+// Widget::setFilterHtml() - that routes through blestaSlideToggle(), whose
+// collapse branch only completes on a `height` transitionend. When that does
+// not fire the panel is left display:block at height:0, which looks hidden but
+// still reports visible, so the next click collapses it again and the button
+// appears to stop working.
 ob_start();
 ?>
-<div class="card-body border-top filter-section-body"<?php echo $has_filter ? '' : ' style="display: none;"'; ?>>
+<div class="collapse<?php echo $has_filter ? ' show' : ''; ?>" id="rs_servers_filter">
+<div class="card-body border-bottom">
 <form method="get" class="p-3 border rounded">
     <input type="hidden" name="scr" value="servers" />
     <div class="row g-3 align-items-end">
@@ -22,6 +27,7 @@ ob_start();
         </div>
         <div class="col-md-6">
             <div class="form-check">
+                <input type="hidden" name="unassigned" value="0" />
                 <input type="checkbox" name="unassigned" value="1" id="rs_servers_unassigned"
                     class="form-check-input"<?php echo ($unassigned === 'true' ? ' checked' : ''); ?> />
                 <label for="rs_servers_unassigned" class="form-check-label">Unassigned servers only</label>
@@ -34,13 +40,31 @@ ob_start();
     </div>
 </form>
 </div>
+</div>
 <?php
-$filter_html = ob_get_clean();
+$filter_panel = ob_get_clean();
+
+$filter_button = [
+    'name' => '',
+    'icon' => 'bi bi-funnel',
+    'attributes' => [
+        'href' => '#rs_servers_filter',
+        'data-bs-toggle' => 'collapse',
+        'role' => 'button',
+        'aria-controls' => 'rs_servers_filter',
+        'aria-expanded' => ($has_filter ? 'true' : 'false'),
+        'title' => 'Filter',
+    ],
+];
 
 $this->Widget->clear();
-$this->Widget->setFilterHtml($filter_html, $has_filter);
+$this->Widget->setLinkButtons([$filter_button]);
 $this->Widget->setBodyWrapper(false);
 $this->Widget->create($this->_('Reliablesite.servers.box_title', true), ['id' => 'rs_servers']);
+
+// The filter panel is a Bootstrap collapse, so it is plain markup inside the
+// card rather than something the Widget renders for us.
+echo $filter_panel;
 
 if ((int) $pending_count > 0) {
 ?>

@@ -38,12 +38,12 @@ $has_filter = ($filters['search'] !== '' || $filters['in_stock'] !== '' || $filt
 $link_buttons = [
     [
         'name' => 'Sync now',
-        'icon' => 'bi bi-arrow-repeat',
+        'icon' => 'bi bi-arrow-repeat me-1',
         'attributes' => ['href' => '?scr=catalog&action=syncnow', 'title' => 'Run a catalog sync now'],
     ],
     [
         'name' => 'Import all',
-        'icon' => 'bi bi-download',
+        'icon' => 'bi bi-download me-1',
         'attributes' => [
             'href' => '?scr=catalog&action=importall',
             'class' => 'rs-confirm rs-confirm-warning',
@@ -54,7 +54,7 @@ $link_buttons = [
     ],
     [
         'name' => 'Re-format names',
-        'icon' => 'bi bi-fonts',
+        'icon' => 'bi bi-fonts me-1',
         'attributes' => [
             'href' => '?scr=catalog&action=reformat',
             'class' => 'rs-confirm rs-confirm-warning',
@@ -65,14 +65,15 @@ $link_buttons = [
     ],
     [
         'name' => 'Refresh',
-        'icon' => 'bi bi-arrow-clockwise',
+        'icon' => 'bi bi-arrow-clockwise me-1',
         'attributes' => ['href' => '?scr=catalog&refresh=1', 'title' => 'Re-fetch the catalog feed'],
     ],
 ];
 
 ob_start();
 ?>
-<div class="card-body border-top filter-section-body"<?php echo $has_filter ? '' : ' style="display: none;"'; ?>>
+<div class="collapse<?php echo $has_filter ? ' show' : ''; ?>" id="rs_catalog_filter">
+<div class="card-body border-bottom">
 <form method="get" class="p-3 border rounded">
     <input type="hidden" name="scr" value="catalog" />
     <div class="row g-3">
@@ -125,14 +126,31 @@ ob_start();
     </div>
 </form>
 </div>
+</div>
 <?php
-$filter_html = ob_get_clean();
+$filter_panel = ob_get_clean();
+
+$filter_button = [
+    'name' => '',
+    'icon' => 'bi bi-funnel',
+    'attributes' => [
+        'href' => '#rs_catalog_filter',
+        'data-bs-toggle' => 'collapse',
+        'role' => 'button',
+        'aria-controls' => 'rs_catalog_filter',
+        'aria-expanded' => ($has_filter ? 'true' : 'false'),
+        'title' => 'Filter',
+    ],
+];
 
 $this->Widget->clear();
-$this->Widget->setLinkButtons($link_buttons);
-$this->Widget->setFilterHtml($filter_html, $has_filter);
+$this->Widget->setLinkButtons(array_merge([$filter_button], $link_buttons));
 $this->Widget->setBodyWrapper(false);
 $this->Widget->create($this->_('Reliablesite.catalog.box_title', true), ['id' => 'rs_catalog']);
+
+// The filter panel is a Bootstrap collapse, so it is plain markup inside the
+// card rather than something the Widget renders for us.
+echo $filter_panel;
 
 if (empty($products)) {
 ?>

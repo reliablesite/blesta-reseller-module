@@ -151,6 +151,17 @@
  * Shared primitives
  * ------------------------------------------------------------------ */
 
+/* Paradigm only sets `vertical-align: middle` on button icons inside a form
+   (`form a.btn i`), and Widget link buttons are not in one - so each glyph sat
+   on the text baseline instead, and icons with different baseline offsets
+   looked like different heights. Align them the way the theme aligns its own.
+   Spacing between icon and label comes from `me-1` on the icon class, which is
+   how core passes it (77 uses of 'bi bi-arrow-left me-1'). */
+.rs-admin .card-filter-bar .btn i {
+    display: inline-block;
+    vertical-align: middle;
+}
+
 /* Paradigm overrides .btn to `padding: 0.5rem 1rem` (application.css:20324),
    which is taller than the 0.375rem an input uses. A button inside an
    input-group therefore sets the row height and the whole control renders

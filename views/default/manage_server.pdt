@@ -14,7 +14,7 @@ if (!empty($error)) {
 
 $link_buttons = [[
     'name' => 'Back to servers',
-    'icon' => 'bi bi-arrow-left',
+    'icon' => 'bi bi-arrow-left me-1',
     'attributes' => ['href' => $back_link],
 ]];
 

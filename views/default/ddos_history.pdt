@@ -7,7 +7,8 @@ $has_filter = ($search !== '');
 
 ob_start();
 ?>
-<div class="card-body border-top filter-section-body"<?php echo $has_filter ? '' : ' style="display: none;"'; ?>>
+<div class="collapse<?php echo $has_filter ? ' show' : ''; ?>" id="rs_ddos_filter">
+<div class="card-body border-bottom">
 <form method="get" class="p-3 border rounded">
     <input type="hidden" name="scr" value="ddoshistory" />
     <div class="row g-3 align-items-end">
@@ -23,13 +24,31 @@ ob_start();
     </div>
 </form>
 </div>
+</div>
 <?php
-$filter_html = ob_get_clean();
+$filter_panel = ob_get_clean();
+
+$filter_button = [
+    'name' => '',
+    'icon' => 'bi bi-funnel',
+    'attributes' => [
+        'href' => '#rs_ddos_filter',
+        'data-bs-toggle' => 'collapse',
+        'role' => 'button',
+        'aria-controls' => 'rs_ddos_filter',
+        'aria-expanded' => ($has_filter ? 'true' : 'false'),
+        'title' => 'Filter',
+    ],
+];
 
 $this->Widget->clear();
-$this->Widget->setFilterHtml($filter_html, $has_filter);
+$this->Widget->setLinkButtons([$filter_button]);
 $this->Widget->setBodyWrapper(false);
 $this->Widget->create('DDoS History', ['id' => 'rs_ddos_history']);
+
+// The filter panel is a Bootstrap collapse, so it is plain markup inside the
+// card rather than something the Widget renders for us.
+echo $filter_panel;
 
 if (empty($attacks)) {
 ?>
