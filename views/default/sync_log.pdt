@@ -1,5 +1,6 @@
 <?php
 $this->Widget->clear();
+$this->Widget->setLinkButtons($tool_buttons ?? []);
 $this->Widget->create('Catalog Sync Log', ['id' => 'rs_sync_log']);
 
 if (empty($logs)) {

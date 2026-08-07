@@ -586,6 +586,7 @@ class Reliablesite extends Module
         $this->view->set('module', $module);
         $this->view->set('needs_credential', false);
         $this->view->set('nav', $this->manageNav('home'));
+        $this->view->set('tool_buttons', $this->toolButtons('home'));
         $this->view->set('account_name', $account_name);
         $this->view->set('stats', [
             'pending' => (int) $pending,
@@ -1245,6 +1246,7 @@ class Reliablesite extends Module
             'currency_options' => $currency_options,
             'payment_methods' => $payment_methods,
             'home_link' => $this->base_uri . 'settings/company/modules/manage/' . $module_id,
+            'tool_buttons' => $this->toolButtons('settings'),
         ]);
 
         // Show the tab bar only when a credential exists (edit mode), inside the wrapper.
@@ -3062,19 +3064,47 @@ class Reliablesite extends Module
                     'nullroutes' => ['label' => 'Null Routes', 'icon' => 'bi-slash-circle'],
                 ],
             ],
-            'askbrian' => [
-                'label' => 'Ask Brian',
-                'icon' => 'bi-robot',
-                'tool' => true,
-                'pages' => [],
-            ],
-            'settings' => [
-                'label' => 'Settings',
-                'icon' => 'bi-gear',
-                'tool' => true,
-                'pages' => [],
-            ],
         ];
+    }
+
+    /**
+     * The module's tools, shown as icon buttons in each card's header rather
+     * than as navigation entries.
+     *
+     * Ask Brian is an assistant and Settings is configuration; neither is a
+     * place you browse to while working, so they sit with the page actions
+     * where Paradigm puts them instead of taking space in the nav.
+     *
+     * @param string $section The active section, so the current tool is not
+     *  offered as a link to itself
+     * @return array In the shape Widget::setLinkButtons() expects
+     */
+    private function toolButtons($section = '')
+    {
+        $tools = [
+            'askbrian' => ['label' => 'Ask Brian', 'icon' => 'bi bi-robot'],
+            'settings' => ['label' => 'Settings', 'icon' => 'bi bi-gear'],
+        ];
+
+        $buttons = [];
+        foreach ($tools as $key => $tool) {
+            if ($key === $section) {
+                continue;
+            }
+
+            $buttons[] = [
+                // Icon only: the title carries the meaning and the header is
+                // already carrying the page's own actions.
+                'name' => '',
+                'icon' => $tool['icon'],
+                'attributes' => [
+                    'href' => $this->navUrl($key),
+                    'title' => $tool['label'],
+                ],
+            ];
+        }
+
+        return $buttons;
     }
 
     /**
@@ -3167,8 +3197,7 @@ class Reliablesite extends Module
         $sections = $this->navSections();
         $pending = $this->pendingBadgeCount();
 
-        $main = '';
-        $tools = '';
+        $items = '';
 
         foreach ($sections as $key => $meta) {
             $is_active = ($key === $section);
@@ -3214,17 +3243,10 @@ class Reliablesite extends Module
                     . '</li>';
             }
 
-            if (!empty($meta['tool'])) {
-                $tools .= $item;
-            } else {
-                $main .= $item;
-            }
+            $items .= $item;
         }
 
-        return '<div class="rs-nav">'
-            . '<ul class="nav" role="tablist">' . $main . '</ul>'
-            . '<ul class="nav rs-nav-tools" role="tablist">' . $tools . '</ul>'
-            . '</div>';
+        return '<ul class="nav rs-nav" role="tablist">' . $items . '</ul>';
     }
 
     /**
@@ -3239,6 +3261,8 @@ class Reliablesite extends Module
      */
     private function renderManageScreen($view, $section, $active, array $data)
     {
+        $data['tool_buttons'] = $this->toolButtons($section);
+
         return $this->wrap($this->manageNav($section, $active) . $this->renderViewRaw($view, $data));
     }
 

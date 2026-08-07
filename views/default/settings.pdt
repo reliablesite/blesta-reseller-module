@@ -4,6 +4,7 @@
 $this->Form->create($form_action, ['class' => 'disable-on-submit']);
 
 $this->Widget->clear();
+$this->Widget->setLinkButtons($tool_buttons ?? []);
 $this->Widget->create($this->_('Reliablesite.settings.box_title', true), ['id' => 'rs_settings']);
 ?>
 

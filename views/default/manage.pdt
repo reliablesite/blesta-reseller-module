@@ -14,6 +14,7 @@ if (!empty($flash) && !empty($flash['msg'])) {
 // First run: no reseller credentials stored yet.
 if (!empty($needs_credential)) {
     $this->Widget->clear();
+    $this->Widget->setLinkButtons($tool_buttons ?? []);
     $this->Widget->create('ReliableSite', ['id' => 'rs_welcome']);
     ?>
     <div class="text-center py-5">
@@ -33,6 +34,7 @@ if (!empty($needs_credential)) {
 echo $nav;
 
 $this->Widget->clear();
+$this->Widget->setLinkButtons($tool_buttons ?? []);
 // Widget::create() HTML-escapes the title itself (Html::_), so pass it raw -
 // escaping here would double-encode names containing & or quotes.
 $this->Widget->create(
