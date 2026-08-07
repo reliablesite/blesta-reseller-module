@@ -3221,22 +3221,28 @@ class Reliablesite extends Module
             $items .= $item;
         }
 
-        // Tools, pinned to the right end of the same row. Icon-only, with a
-        // tooltip for the label - Paradigm auto-binds [data-bs-toggle=tooltip].
-        $first = true;
+        // Tools are a second list rather than trailing items in the first, so
+        // the row can right-align them with justify-content: space-between.
+        // Relying on margin-left:auto on a single <li> only works while the
+        // sections never wrap - once they do, the tool lands mid-row.
+        $tools = '';
         foreach ($this->navTools() as $key => $tool) {
-            $items .= '<li class="nav-item rs-nav-tool' . ($first ? ' rs-nav-tool-first' : '') . '">'
+            $label = htmlspecialchars($tool['label'], ENT_QUOTES, 'UTF-8');
+
+            $tools .= '<li class="nav-item">'
                 . '<a class="nav-link' . ($key === $section ? ' active' : '') . '"'
                 . ' href="' . htmlspecialchars($this->navUrl($key), ENT_QUOTES, 'UTF-8') . '"'
-                . ' title="' . htmlspecialchars($tool['label'], ENT_QUOTES, 'UTF-8') . '"'
+                . ' title="' . $label . '"'
                 . ' data-bs-toggle="tooltip" data-bs-placement="top"'
-                . ' aria-label="' . htmlspecialchars($tool['label'], ENT_QUOTES, 'UTF-8') . '">'
+                . ' aria-label="' . $label . '">'
                 . '<i class="bi ' . $tool['icon'] . '"></i>'
                 . '</a></li>';
-            $first = false;
         }
 
-        return '<ul class="nav rs-nav" role="tablist">' . $items . '</ul>';
+        return '<div class="rs-nav">'
+            . '<ul class="nav rs-nav-sections" role="tablist">' . $items . '</ul>'
+            . '<ul class="nav rs-nav-tools">' . $tools . '</ul>'
+            . '</div>';
     }
 
     /**
@@ -3305,8 +3311,16 @@ class Reliablesite extends Module
     private function assetUri($file)
     {
         $web_dir = str_replace('index.php/', '', WEBDIR);
+        $uri = $web_dir . 'components/modules/reliablesite/views/default/' . $file;
 
-        return $web_dir . 'components/modules/reliablesite/views/default/' . $file;
+        // Cache-bust on file mtime. Without this the browser holds the old
+        // stylesheet after an upgrade - the URL never changes - and the module
+        // renders with the previous release's CSS until a hard refresh.
+        $path = dirname(__FILE__) . DS . 'views' . DS . 'default' . DS
+            . str_replace('/', DS, $file);
+        $mtime = @filemtime($path);
+
+        return $mtime ? ($uri . '?v=' . $mtime) : $uri;
     }
 
     /**
