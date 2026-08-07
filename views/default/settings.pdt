@@ -1,182 +1,222 @@
 <?php
+/**
+ * Grouped by what an admin is actually deciding - how the module connects,
+ * what it imports, what it does on a schedule, how orders are paid, and who
+ * gets told - rather than by which API each setting happens to belong to.
+ *
+ * Explanatory text is a bi-info-circle tooltip beside the label, which is the
+ * Paradigm idiom (see admin_company_billing_invoices_form.pdt) and keeps the
+ * page short; a two-column grid does the rest.
+ *
+ * Checkboxes, not switches: Paradigm uses .form-check for saved form fields
+ * (114 uses) and reserves .form-switch for live UI preferences (2 uses, both
+ * immediate-effect toggles).
+ */
+
 // Form wraps the whole card, matching components/modules/cpanel/views/default/add_row.pdt.
 // Opening it inside the card instead would leave </form> mis-nested in the footer.
 $this->Form->create($form_action, ['class' => 'disable-on-submit']);
 
 $this->Widget->clear();
 $this->Widget->create($this->_('Reliablesite.settings.box_title', true), ['id' => 'rs_settings']);
+
+/** Renders a Paradigm label, with the explanation as a tooltip rather than a line of help text. */
+$label = function ($for, $text, $tip = null) {
+    echo '<label for="' . $this->Html->safe($for) . '" class="form-label">' . $this->Html->safe($text);
+    if ($tip !== null && $tip !== '') {
+        echo '<i class="bi bi-info-circle ms-1" data-bs-toggle="tooltip" data-bs-placement="top"'
+            . ' title="' . $this->Html->safe($tip) . '"></i>';
+    }
+    echo '</label>';
+};
 ?>
 
-    <h6 class="form-section-header">Credentials</h6>
-
-    <div class="mb-3">
-        <label for="account_name" class="form-label"><?php $this->_('Reliablesite.row_meta.account_name'); ?></label>
-        <?php $this->Form->fieldText('account_name', $vars->account_name ?? null, [
-            'id' => 'account_name', 'class' => 'form-control'
-        ]); ?>
-    </div>
-
-    <div class="mb-3">
-        <label for="api_key" class="form-label"><?php $this->_('Reliablesite.row_meta.api_key'); ?></label>
-        <?php $this->Form->fieldText('api_key', $vars->api_key ?? null, [
-            'id' => 'api_key', 'class' => 'form-control'
-        ]); ?>
-    </div>
-
-    <h6 class="form-section-header mt-4">Provisioning &amp; Notifications</h6>
-
-    <div class="mb-3">
-        <div class="form-check">
-            <?php $this->Form->fieldCheckbox(
-                'admin_notify_enabled',
-                '1',
-                (isset($vars->admin_notify_enabled) && $vars->admin_notify_enabled == '1'),
-                ['id' => 'admin_notify_enabled', 'class' => 'form-check-input']
+    <h6 class="form-section-header">Connection</h6>
+    <div class="row g-3">
+        <div class="col-md-5">
+            <?php $label(
+                'account_name',
+                $this->_('Reliablesite.row_meta.account_name', true),
+                $edit ? 'The name this credential set is listed under. Fixed once saved.' : null
             ); ?>
-            <label for="admin_notify_enabled" class="form-check-label">
-                <?php $this->_('Reliablesite.row_meta.admin_notify_enabled'); ?>
-            </label>
+            <?php if ($edit) { ?>
+                <div class="input-group">
+                    <input type="text" name="account_name" id="account_name" class="form-control"
+                        value="<?php echo $this->Html->safe($vars->account_name ?? ''); ?>" readonly />
+                    <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                </div>
+            <?php } else { ?>
+                <input type="text" name="account_name" id="account_name" class="form-control"
+                    value="<?php echo $this->Html->safe($vars->account_name ?? ''); ?>" required />
+            <?php } ?>
+        </div>
+
+        <div class="col-md-7">
+            <?php $label(
+                'api_key',
+                $this->_('Reliablesite.row_meta.api_key', true),
+                'Your ReliableSite reseller API key. Used for every request the module makes.'
+            ); ?>
+            <div class="input-group">
+                <input type="password" name="api_key" id="api_key" class="form-control"
+                    value="<?php echo $this->Html->safe($vars->api_key ?? ''); ?>"
+                    autocomplete="off" spellcheck="false" required />
+                <button type="button" class="btn btn-outline-secondary" data-rs-reveal="api_key"
+                    data-rs-label-show="Show API key" data-rs-label-hide="Hide API key"
+                    aria-label="Show API key" aria-pressed="false"
+                    data-bs-toggle="tooltip" data-bs-placement="top" title="Show API key">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </div>
         </div>
     </div>
 
-    <div class="mb-3">
-        <label for="admin_notify_emails" class="form-label">
-            <?php $this->_('Reliablesite.row_meta.admin_notify_emails'); ?>
-        </label>
-        <?php $this->Form->fieldText('admin_notify_emails', $vars->admin_notify_emails ?? null, [
-            'id' => 'admin_notify_emails',
-            'class' => 'form-control',
-            'placeholder' => 'ops@example.com, alerts@example.com'
-        ]); ?>
-    </div>
-
-    <h6 class="form-section-header mt-4">Catalog Import &amp; Sync</h6>
-
+    <h6 class="form-section-header mt-4">Catalog import</h6>
     <div class="row g-3">
         <div class="col-md-6">
-            <label for="import_package_group" class="form-label">
-                <?php $this->_('Reliablesite.row_meta.import_package_group'); ?>
-            </label>
+            <?php $label('import_package_group', $this->_('Reliablesite.row_meta.import_package_group', true)); ?>
             <?php $this->Form->fieldSelect('import_package_group', $group_options, $vars->import_package_group ?? null, [
                 'id' => 'import_package_group', 'class' => 'form-select'
             ]); ?>
         </div>
         <div class="col-md-6">
-            <label for="import_currency_code" class="form-label">
-                <?php $this->_('Reliablesite.row_meta.import_currency_code'); ?>
-            </label>
+            <?php $label('import_currency_code', $this->_('Reliablesite.row_meta.import_currency_code', true)); ?>
             <?php $this->Form->fieldSelect('import_currency_code', $currency_options, $vars->import_currency_code ?? null, [
                 'id' => 'import_currency_code', 'class' => 'form-select'
             ]); ?>
         </div>
-        <div class="col-md-6">
-            <label for="markup_type" class="form-label">
-                <?php $this->_('Reliablesite.row_meta.markup_type'); ?>
-            </label>
+        <div class="col-md-4">
+            <?php $label('markup_type', $this->_('Reliablesite.row_meta.markup_type', true)); ?>
             <?php $this->Form->fieldSelect('markup_type', [
                 'percent' => $this->_('Reliablesite.settings.markup_percent', true),
                 'flat' => $this->_('Reliablesite.settings.markup_flat', true)
             ], $vars->markup_type ?? 'percent', ['id' => 'markup_type', 'class' => 'form-select']); ?>
         </div>
-        <div class="col-md-6">
-            <label for="markup_value" class="form-label">
-                <?php $this->_('Reliablesite.row_meta.markup_value'); ?>
-            </label>
+        <div class="col-md-2">
+            <?php $label('markup_value', $this->_('Reliablesite.row_meta.markup_value', true)); ?>
             <?php $this->Form->fieldText('markup_value', $vars->markup_value ?? '0', [
                 'id' => 'markup_value', 'class' => 'form-control'
             ]); ?>
         </div>
         <div class="col-md-6">
-            <label for="cycle_mode" class="form-label">
-                <?php $this->_('Reliablesite.row_meta.cycle_mode'); ?>
-            </label>
+            <?php $label('cycle_mode', $this->_('Reliablesite.row_meta.cycle_mode', true)); ?>
             <?php $this->Form->fieldSelect('cycle_mode', [
                 'monthly_only' => $this->_('Reliablesite.settings.cycle_monthly', true),
                 'all' => $this->_('Reliablesite.settings.cycle_all', true)
             ], $vars->cycle_mode ?? 'monthly_only', ['id' => 'cycle_mode', 'class' => 'form-select']); ?>
         </div>
+    </div>
+
+    <h6 class="form-section-header mt-4">Automation</h6>
+    <div class="row g-3 align-items-start">
         <div class="col-md-6">
-            <label for="sync_frequency" class="form-label">
-                <?php $this->_('Reliablesite.row_meta.sync_frequency'); ?>
-            </label>
+            <div class="form-check">
+                <?php $this->Form->fieldCheckbox(
+                    'catalog_sync_enabled',
+                    '1',
+                    (isset($vars->catalog_sync_enabled) && $vars->catalog_sync_enabled == '1'),
+                    ['id' => 'catalog_sync_enabled', 'class' => 'form-check-input']
+                ); ?>
+                <label for="catalog_sync_enabled" class="form-check-label">
+                    <?php $this->_('Reliablesite.row_meta.catalog_sync_enabled'); ?>
+                </label>
+            </div>
+            <div class="form-check mt-2">
+                <?php $this->Form->fieldCheckbox(
+                    'options_sync_enabled',
+                    '1',
+                    (isset($vars->options_sync_enabled) && $vars->options_sync_enabled == '1'),
+                    ['id' => 'options_sync_enabled', 'class' => 'form-check-input']
+                ); ?>
+                <label for="options_sync_enabled" class="form-check-label">
+                    <?php $this->_('Reliablesite.row_meta.options_sync_enabled'); ?>
+                    <i class="bi bi-info-circle ms-1" data-bs-toggle="tooltip" data-bs-placement="top"
+                        title="<?php echo $this->Html->safe($this->_('Reliablesite.row_meta.options_sync_enabled.note', true)); ?>"></i>
+                </label>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <?php $label(
+                'sync_frequency',
+                $this->_('Reliablesite.row_meta.sync_frequency', true),
+                'How often the automatic catalog sync runs.'
+            ); ?>
             <?php $this->Form->fieldSelect(
                 'sync_frequency',
                 ['15' => '15', '30' => '30', '45' => '45', '60' => '60'],
                 $vars->sync_frequency ?? '60',
                 ['id' => 'sync_frequency', 'class' => 'form-select']
             ); ?>
-            <div class="form-text">Minutes between automatic catalog syncs.</div>
         </div>
     </div>
 
-    <div class="mt-3">
-        <div class="form-check">
-            <?php $this->Form->fieldCheckbox(
-                'catalog_sync_enabled',
-                '1',
-                (isset($vars->catalog_sync_enabled) && $vars->catalog_sync_enabled == '1'),
-                ['id' => 'catalog_sync_enabled', 'class' => 'form-check-input']
+    <h6 class="form-section-header mt-4">Orders</h6>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <?php $label(
+                'order_default_payment_method',
+                $this->_('Reliablesite.row_meta.order_default_payment_method', true),
+                $this->_('Reliablesite.row_meta.order_default_payment_method.note', true)
             ); ?>
-            <label for="catalog_sync_enabled" class="form-check-label">
-                <?php $this->_('Reliablesite.row_meta.catalog_sync_enabled'); ?>
-            </label>
-        </div>
-
-        <div class="form-check">
-            <?php $this->Form->fieldCheckbox(
-                'options_sync_enabled',
-                '1',
-                (isset($vars->options_sync_enabled) && $vars->options_sync_enabled == '1'),
-                ['id' => 'options_sync_enabled', 'class' => 'form-check-input']
-            ); ?>
-            <label for="options_sync_enabled" class="form-check-label">
-                <?php $this->_('Reliablesite.row_meta.options_sync_enabled'); ?>
-            </label>
-            <div class="form-text"><?php $this->_('Reliablesite.row_meta.options_sync_enabled.note'); ?></div>
-        </div>
-
-        <div class="form-check mt-2">
-            <?php $this->Form->fieldCheckbox(
-                'sync_report_enabled',
-                '1',
-                (isset($vars->sync_report_enabled) && $vars->sync_report_enabled == '1'),
-                ['id' => 'sync_report_enabled', 'class' => 'form-check-input']
-            ); ?>
-            <label for="sync_report_enabled" class="form-check-label">
-                <?php $this->_('Reliablesite.row_meta.sync_report_enabled'); ?>
-            </label>
+            <?php
+            $current_pm = $vars->order_default_payment_method ?? null;
+            if (!empty($payment_methods)) {
+                $pm_options = ['' => $this->_('Reliablesite.settings.payment_method_none', true)];
+                foreach ($payment_methods as $pm_module => $pm_label) {
+                    $pm_options[$pm_module] = $pm_label;
+                }
+                // Preserve a stored value that is no longer returned by the API.
+                if ($current_pm !== null && $current_pm !== '' && !isset($pm_options[$current_pm])) {
+                    $pm_options[$current_pm] = $current_pm;
+                }
+                $this->Form->fieldSelect('order_default_payment_method', $pm_options, $current_pm, [
+                    'id' => 'order_default_payment_method', 'class' => 'form-select'
+                ]);
+            } else {
+                $this->Form->fieldText('order_default_payment_method', $current_pm, [
+                    'id' => 'order_default_payment_method',
+                    'class' => 'form-control',
+                    'placeholder' => 'paypal'
+                ]);
+            }
+            ?>
         </div>
     </div>
 
-    <h6 class="form-section-header mt-4">Order API</h6>
-
-    <div class="mb-3">
-        <label for="order_default_payment_method" class="form-label">
-            <?php $this->_('Reliablesite.row_meta.order_default_payment_method'); ?>
-        </label>
-        <?php
-        $current_pm = $vars->order_default_payment_method ?? null;
-        if (!empty($payment_methods)) {
-            $pm_options = ['' => $this->_('Reliablesite.settings.payment_method_none', true)];
-            foreach ($payment_methods as $pm_module => $pm_label) {
-                $pm_options[$pm_module] = $pm_label;
-            }
-            // Preserve a stored value that is no longer returned by the API.
-            if ($current_pm !== null && $current_pm !== '' && !isset($pm_options[$current_pm])) {
-                $pm_options[$current_pm] = $current_pm;
-            }
-            $this->Form->fieldSelect('order_default_payment_method', $pm_options, $current_pm, [
-                'id' => 'order_default_payment_method', 'class' => 'form-select'
-            ]);
-        } else {
-            $this->Form->fieldText('order_default_payment_method', $current_pm, [
-                'id' => 'order_default_payment_method',
+    <h6 class="form-section-header mt-4">Notifications</h6>
+    <div class="row g-3 align-items-start">
+        <div class="col-md-6">
+            <div class="form-check">
+                <?php $this->Form->fieldCheckbox(
+                    'admin_notify_enabled',
+                    '1',
+                    (isset($vars->admin_notify_enabled) && $vars->admin_notify_enabled == '1'),
+                    ['id' => 'admin_notify_enabled', 'class' => 'form-check-input']
+                ); ?>
+                <label for="admin_notify_enabled" class="form-check-label">
+                    <?php $this->_('Reliablesite.row_meta.admin_notify_enabled'); ?>
+                </label>
+            </div>
+            <div class="form-check mt-2">
+                <?php $this->Form->fieldCheckbox(
+                    'sync_report_enabled',
+                    '1',
+                    (isset($vars->sync_report_enabled) && $vars->sync_report_enabled == '1'),
+                    ['id' => 'sync_report_enabled', 'class' => 'form-check-input']
+                ); ?>
+                <label for="sync_report_enabled" class="form-check-label">
+                    <?php $this->_('Reliablesite.row_meta.sync_report_enabled'); ?>
+                </label>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <?php $label('admin_notify_emails', $this->_('Reliablesite.row_meta.admin_notify_emails', true)); ?>
+            <?php $this->Form->fieldText('admin_notify_emails', $vars->admin_notify_emails ?? null, [
+                'id' => 'admin_notify_emails',
                 'class' => 'form-control',
-                'placeholder' => 'paypal'
-            ]);
-        }
-        ?>
-        <div class="form-text"><?php $this->_('Reliablesite.row_meta.order_default_payment_method.note'); ?></div>
+                'placeholder' => 'ops@example.com, alerts@example.com'
+            ]); ?>
+        </div>
     </div>
 
 <?php
