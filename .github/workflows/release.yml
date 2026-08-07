@@ -1,0 +1,167 @@
+name: Package Release
+
+# Two ways in, one packaging path:
+#
+#   Run workflow (version: 2.4.0)  - stamps the version into the module, commits
+#                                    it, tags v2.4.0, then packages. Nothing to
+#                                    edit or remember by hand.
+#   git push origin v2.4.0         - packages an existing tag, stamping the
+#                                    version from the tag name.
+#
+# Both are handled here on purpose. A tag pushed by a workflow using GITHUB_TOKEN
+# does not start another workflow run, so a separate "bump" workflow could create
+# the tag but would never get it packaged.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version, e.g. 2.4.0'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Full history so the dispatch path can commit and tag.
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: version
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+            VERSION="${VERSION#v}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::'$VERSION' is not MAJOR.MINOR.PATCH"
+            exit 1
+          fi
+
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "TAG=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing $VERSION"
+
+      - name: Stamp version into the module
+        run: python3 .github/scripts/set-version.py "${{ steps.version.outputs.VERSION }}"
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Validate
+        run: |
+          set -euo pipefail
+
+          # Nothing ships that PHP cannot parse. .pdt files are PHP too.
+          # php -l is chatty on success, so only surface the failures.
+          if ! find . -path ./.git -prune -o \( -name '*.php' -o -name '*.pdt' \) -print0 \
+               | xargs -0 -n1 php -l > lint.log 2>&1; then
+            grep -v 'No syntax errors detected' lint.log || true
+            rm -f lint.log
+            echo "::error::PHP syntax check failed"
+            exit 1
+          fi
+          rm -f lint.log
+
+          python3 -c "import json; json.load(open('config.json'))"
+
+          # The stamp step already asserts this, but re-checking after the lint
+          # means a broken edit cannot slip through to the artifact.
+          python3 .github/scripts/set-version.py "${{ steps.version.outputs.VERSION }}" --check
+
+          echo "PHP syntax, config.json and version all OK"
+
+      - name: Commit and tag
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          set -euo pipefail
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+          if git diff --quiet -- config.json reliablesite.php; then
+            echo "Version already ${{ steps.version.outputs.VERSION }} in the tree; nothing to commit."
+          else
+            git add config.json reliablesite.php
+            git commit -m 'Release ${{ steps.version.outputs.VERSION }}'
+            git push origin HEAD:${{ github.ref_name }}
+          fi
+
+          if git rev-parse -q --verify "refs/tags/${{ steps.version.outputs.TAG }}" > /dev/null; then
+            echo "::error::Tag ${{ steps.version.outputs.TAG }} already exists"
+            exit 1
+          fi
+
+          git tag -a '${{ steps.version.outputs.TAG }}' -m 'Release ${{ steps.version.outputs.VERSION }}'
+          git push origin '${{ steps.version.outputs.TAG }}'
+
+      - name: Package into zip
+        run: |
+          set -euo pipefail
+          # Blesta modules install to components/modules/<name>/, so the archive
+          # holds the module folder itself - unzip straight into that directory.
+          mkdir -p dist/reliablesite
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='dist' \
+            ./ dist/reliablesite/
+
+          cd dist
+          zip -rq "../ReliableSite-Blesta-Reseller-${{ steps.version.outputs.VERSION }}.zip" reliablesite
+          cd ..
+
+          echo "Archive contents:"
+          unzip -l "ReliableSite-Blesta-Reseller-${{ steps.version.outputs.VERSION }}.zip"
+
+      - name: Verify the archive
+        run: |
+          set -euo pipefail
+          ZIP="ReliableSite-Blesta-Reseller-${{ steps.version.outputs.VERSION }}.zip"
+
+          # Everything must sit under reliablesite/, and the two version-bearing
+          # files must be present and carry the released version.
+          if unzip -Z1 "$ZIP" | grep -qv '^reliablesite/'; then
+            echo "::error::archive has entries outside reliablesite/"
+            exit 1
+          fi
+
+          rm -rf verify && mkdir verify && unzip -q "$ZIP" -d verify
+          test -f verify/reliablesite/reliablesite.php
+          test -f verify/reliablesite/config.json
+          test ! -e verify/reliablesite/.github
+
+          python3 - "$PWD/verify/reliablesite" "${{ steps.version.outputs.VERSION }}" <<'PY'
+          import json, pathlib, re, sys
+          root, want = pathlib.Path(sys.argv[1]), sys.argv[2]
+          got_json = json.loads((root / 'config.json').read_text())['version']
+          got_php = re.search(r"const RS_VERSION\s*=\s*'([^']*)'",
+                              (root / 'reliablesite.php').read_text()).group(1)
+          if got_json != want or got_php != want:
+              sys.exit('::error::packaged versions %s / %s != %s' % (got_json, got_php, want))
+          print('packaged module reports %s in both files' % want)
+          PY
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.TAG }}
+          name: ${{ steps.version.outputs.VERSION }}
+          generate_release_notes: true
+          files: ReliableSite-Blesta-Reseller-${{ steps.version.outputs.VERSION }}.zip
