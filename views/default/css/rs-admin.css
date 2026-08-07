@@ -15,7 +15,9 @@
  * .form-control, .label*, .title_row, .pad, .inner, .button_row, .error_box,
  * .red_txt, .btn-default. Paradigm themes all of those correctly for both
  * modes; overriding them is what made this module look like a light-mode
- * widget bolted onto a dark app.
+ * widget bolted onto a dark app. The one exception is the input-group button
+ * height fix below, which reproduces a correction the theme already makes for
+ * its own buttons.
  */
 
 .rs-admin {
@@ -148,6 +150,21 @@
 /* ------------------------------------------------------------------ *
  * Shared primitives
  * ------------------------------------------------------------------ */
+
+/* Paradigm overrides .btn to `padding: 0.5rem 1rem` (application.css:20324),
+   which is taller than the 0.375rem an input uses. A button inside an
+   input-group therefore sets the row height and the whole control renders
+   taller than every plain field beside it.
+   The theme corrects this for its own password button - see
+   `.input-group .btn.generate-password` (application.css:21471) - and this
+   reproduces that correction for ours. It cannot simply reuse the class:
+   app.js binds a password generator to .generate-password. */
+.rs-admin .input-group .btn {
+    padding-top: .375rem;
+    padding-bottom: .375rem;
+    line-height: 1.2;
+}
+
 .rs-admin .rs-actions {
     display: flex;
     flex-wrap: wrap;
