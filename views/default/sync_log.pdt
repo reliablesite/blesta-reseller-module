@@ -1,5 +1,9 @@
 <?php
 $this->Widget->clear();
+if (!empty($section_tabs)) {
+    $this->Widget->setTabs($section_tabs);
+    $this->Widget->setNavStyle('nav-tabs-custom');
+}
 $this->Widget->create('Catalog Sync Log', ['id' => 'rs_sync_log']);
 
 if (empty($logs)) {

@@ -34,6 +34,9 @@ class Reliablesite extends Module
     /** @var array Buffer of sync-log lines for the current run */
     private $sync_log_lines = [];
 
+    /** @var int|null Memoised pending-assignment count for the nav badge */
+    private $pending_badge_count = null;
+
     /**
      * Initializes the module.
      */
@@ -1326,7 +1329,7 @@ class Reliablesite extends Module
             } while (!empty($list) && $page <= 20);
         }
 
-        return $this->renderManageScreen('pending_orders', 'pendingorders', [
+        return $this->renderManageScreen('pending_orders', 'provisioning', 'pendingorders', [
             'pending' => $pending,
             'server_options' => $server_options,
             'order_states' => $order_states,
@@ -1364,7 +1367,7 @@ class Reliablesite extends Module
         }
         $assigned = $this->assignedServersByServerId($server_ids);
 
-        return $this->renderManageScreen('servers', 'servers', [
+        return $this->renderManageScreen('servers', 'provisioning', 'servers', [
             'servers' => $list,
             'assigned' => $assigned,
             'client_base' => $this->base_uri . 'clients/view/',
@@ -1458,7 +1461,7 @@ class Reliablesite extends Module
             $data['notice'] = null;
             $data['error'] = null;
 
-            return $this->renderManageScreen('manage_server', 'servers', $data);
+            return $this->renderManageScreen('manage_server', 'provisioning', 'servers', $data);
         }
 
         // Handle GET actions.
@@ -1515,7 +1518,7 @@ class Reliablesite extends Module
         $data['notice'] = $notice;
         $data['error'] = $error;
 
-        return $this->renderManageScreen('manage_server', 'servers', $data);
+        return $this->renderManageScreen('manage_server', 'provisioning', 'servers', $data);
     }
 
     /**
@@ -1650,7 +1653,7 @@ class Reliablesite extends Module
             $filtered[] = $row;
         }
 
-        return $this->renderManageScreen('catalog', 'catalog', [
+        return $this->renderManageScreen('catalog', 'catalog', 'catalog', [
             'products' => $filtered,
             'total_count' => count($annotated),
             'shown_count' => count($filtered),
@@ -1706,7 +1709,7 @@ class Reliablesite extends Module
         $add_action = $this->base_uri . 'settings/company/modules/editrow/'
             . $this->getModuleId() . '/' . $this->getModuleRowId();
 
-        return $this->renderManageScreen('customers', 'customers', [
+        return $this->renderManageScreen('customers', 'provisioning', 'customers', [
             'customers' => $customers,
             'linked' => $linked,
             'assigned_servers' => $assigned_servers,
@@ -1831,7 +1834,7 @@ class Reliablesite extends Module
         $resp = $api->ddosProfiles();
         $data = $this->apiData($resp);
 
-        return $this->renderManageScreen('ddos_profiles', 'ddosprofiles', [
+        return $this->renderManageScreen('ddos_profiles', 'protection', 'ddosprofiles', [
             'profiles' => isset($data['profiles']) ? $data['profiles'] : [],
             'errors' => !empty($resp['errors']) ? $resp['errors'] : [],
             'home_link' => $this->base_uri . 'settings/company/modules/manage/' . $this->getModuleId(),
@@ -1845,7 +1848,7 @@ class Reliablesite extends Module
         $search = isset($_GET['search']) ? trim($_GET['search']) : '';
         $resp = $api->GetDDoSAttacks($page, $search);
 
-        return $this->renderManageScreen('ddos_history', 'ddoshistory', [
+        return $this->renderManageScreen('ddos_history', 'protection', 'ddoshistory', [
             'attacks' => $api->extractList($this->apiData($resp)),
             'page' => $page,
             'search' => $search,
@@ -1876,7 +1879,7 @@ class Reliablesite extends Module
         $search = isset($_GET['search']) ? trim($_GET['search']) : '';
         $resp = $api->getNullRoutes($page, $search, 'false');
 
-        return $this->renderManageScreen('null_routes', 'nullroutes', [
+        return $this->renderManageScreen('null_routes', 'protection', 'nullroutes', [
             'routes' => $api->extractList($this->apiData($resp)),
             'page' => $page,
             'search' => $search,
@@ -1895,7 +1898,7 @@ class Reliablesite extends Module
             ->limit(50)
             ->fetchAll();
 
-        return $this->renderManageScreen('sync_log', 'synclog', [
+        return $this->renderManageScreen('sync_log', 'catalog', 'synclog', [
             'logs' => $logs,
             'home_link' => $this->base_uri . 'settings/company/modules/manage/' . $this->getModuleId(),
         ]);
@@ -2840,7 +2843,7 @@ class Reliablesite extends Module
 
         $api_key = $this->getSetting('api_key');
 
-        return $this->renderManageScreen('askbrian', 'askbrian', [
+        return $this->renderManageScreen('askbrian', 'askbrian', 'askbrian', [
             'ajax_url' => $this->base_uri . 'settings/company/modules/addrow/'
                 . $this->getModuleId() . '/?scr=askbrian&ajax=1',
             'session_id' => $this->askBrianSessionId(),
@@ -3012,72 +3015,245 @@ class Reliablesite extends Module
     }
 
     /**
-     * Builds the management tab bar shared by every admin screen.
+     * The module's admin information architecture.
+     *
+     * Screens are grouped into sections rather than listed flat: eleven
+     * peer tabs gave no sense of what belonged with what, and the strip
+     * scrolled horizontally on normal window widths.
+     *
+     * Each entry is [label, icon, pages], where `pages` are the screens
+     * shown as second-level tabs inside that section's card. A section with
+     * no pages is a single screen. `tool` sections are pushed to the right
+     * of the strip so operational sections read as one group.
+     *
+     * @return array
+     */
+    private function navSections()
+    {
+        return [
+            'home' => [
+                'label' => 'Overview',
+                'icon' => 'bi-speedometer2',
+                'pages' => [],
+            ],
+            'provisioning' => [
+                'label' => 'Provisioning',
+                'icon' => 'bi-hdd-rack',
+                'pages' => [
+                    'pendingorders' => ['label' => 'Pending Orders', 'icon' => 'bi-hourglass-split'],
+                    'servers' => ['label' => 'Servers', 'icon' => 'bi-hdd-rack'],
+                    'customers' => ['label' => 'Customers', 'icon' => 'bi-people'],
+                ],
+            ],
+            'catalog' => [
+                'label' => 'Catalog',
+                'icon' => 'bi-box-seam',
+                'pages' => [
+                    'catalog' => ['label' => 'Products', 'icon' => 'bi-box-seam'],
+                    'synclog' => ['label' => 'Sync Log', 'icon' => 'bi-list-ul'],
+                ],
+            ],
+            'protection' => [
+                'label' => 'Protection',
+                'icon' => 'bi-shield-check',
+                'pages' => [
+                    'ddosprofiles' => ['label' => 'DDoS Profiles', 'icon' => 'bi-shield-check'],
+                    'ddoshistory' => ['label' => 'Attack History', 'icon' => 'bi-clock-history'],
+                    'nullroutes' => ['label' => 'Null Routes', 'icon' => 'bi-slash-circle'],
+                ],
+            ],
+            'askbrian' => [
+                'label' => 'Ask Brian',
+                'icon' => 'bi-robot',
+                'tool' => true,
+                'pages' => [],
+            ],
+            'settings' => [
+                'label' => 'Settings',
+                'icon' => 'bi-gear',
+                'tool' => true,
+                'pages' => [],
+            ],
+        ];
+    }
+
+    /**
+     * Resolves a section to the screen it should open.
+     *
+     * Section keys like 'provisioning' are groupings, not routes - linking to
+     * ?scr=provisioning would hit the router's default case and render the
+     * invalid-action screen. A grouping opens its first page instead.
+     *
+     * @param string $section Section key
+     * @return string A routable screen key
+     */
+    private function sectionLanding($section)
+    {
+        $sections = $this->navSections();
+        $pages = isset($sections[$section]['pages']) ? $sections[$section]['pages'] : [];
+
+        if (empty($pages)) {
+            return $section;
+        }
+
+        return (string) array_key_first($pages);
+    }
+
+    /**
+     * Resolves a screen key to its URL.
+     *
+     * Overview and Settings are real Blesta module endpoints; everything else
+     * is served through the add-row controller via ?scr=.
+     *
+     * @param string $key Section or page key
+     * @return string
+     */
+    private function navUrl($key)
+    {
+        $module_id = $this->getModuleId();
+
+        if ($key === 'home') {
+            return $this->base_uri . 'settings/company/modules/manage/' . $module_id;
+        }
+
+        if ($key === 'settings') {
+            return $this->base_uri . 'settings/company/modules/editrow/' . $module_id
+                . '/' . $this->getModuleRowId();
+        }
+
+        return $this->base_uri . 'settings/company/modules/addrow/' . $module_id . '/?scr=' . $key;
+    }
+
+    /**
+     * Number of services awaiting a server, memoised so the nav badge costs at
+     * most one COUNT per request no matter how often it is rendered.
+     *
+     * @return int
+     */
+    private function pendingBadgeCount()
+    {
+        if ($this->pending_badge_count === null) {
+            try {
+                $this->pending_badge_count = (int) $this->loadAssignment()->pendingCount();
+            } catch (Exception $e) {
+                // The badge must never take a screen down with it.
+                $this->pending_badge_count = 0;
+            }
+        }
+
+        return $this->pending_badge_count;
+    }
+
+    /**
+     * Builds the top-level section strip shown above every admin card.
      *
      * Uses Paradigm's own .nav-tabs-custom, which supplies the colours, hover
      * state, active underline and horizontal overflow scrolling for both light
      * and dark (app/views/admin/paradigm/css/application.css:20485).
      *
      * Deliberately not routed through Widget::setTabs(): that renders into
-     * .card-filter-bar, which Paradigm pins to `flex-wrap: nowrap !important`
-     * (application.css:19572), so eleven tabs would clip rather than scroll.
-     * setTabs() is also for switching panels inside one card, whereas this is
-     * cross-page navigation sitting above a different card on every screen.
+     * .card-filter-bar, and this strip sits above a different card on every
+     * screen. Dropdowns are not an option either - .nav-tabs-custom sets
+     * overflow-y: hidden, which would clip an open menu.
      *
-     * Icons are Bootstrap Icons: Paradigm ships no Font Awesome CSS and no FA
-     * webfont, so `fas fa-*` renders as an empty box.
-     *
-     * @param string $active The active tab key
+     * @param string $section The active section key
      * @return string HTML
      */
-    private function manageNav($active)
+    private function manageNav($section)
     {
-        $module_id = $this->getModuleId();
-        $row_id = $this->getModuleRowId();
-        $addrow = $this->base_uri . 'settings/company/modules/addrow/' . $module_id . '/?scr=';
+        $sections = $this->navSections();
+        $pending = $this->pendingBadgeCount();
 
-        $tabs = [
-            'home' => ['label' => 'Overview', 'icon' => 'bi-speedometer2',
-                'url' => $this->base_uri . 'settings/company/modules/manage/' . $module_id],
-            'askbrian' => ['label' => 'Ask Brian', 'icon' => 'bi-robot', 'url' => $addrow . 'askbrian'],
-            'settings' => ['label' => 'Settings', 'icon' => 'bi-gear',
-                'url' => $this->base_uri . 'settings/company/modules/editrow/' . $module_id . '/' . $row_id],
-            'pendingorders' => ['label' => 'Pending Orders', 'icon' => 'bi-hourglass-split', 'url' => $addrow . 'pendingorders'],
-            'servers' => ['label' => 'Servers', 'icon' => 'bi-hdd-rack', 'url' => $addrow . 'servers'],
-            'catalog' => ['label' => 'Catalog', 'icon' => 'bi-box-seam', 'url' => $addrow . 'catalog'],
-            'customers' => ['label' => 'Customers', 'icon' => 'bi-people', 'url' => $addrow . 'customers'],
-            'ddosprofiles' => ['label' => 'DDoS Profiles', 'icon' => 'bi-shield-check', 'url' => $addrow . 'ddosprofiles'],
-            'ddoshistory' => ['label' => 'DDoS History', 'icon' => 'bi-clock-history', 'url' => $addrow . 'ddoshistory'],
-            'nullroutes' => ['label' => 'Null Routes', 'icon' => 'bi-slash-circle', 'url' => $addrow . 'nullroutes'],
-            'synclog' => ['label' => 'Sync Log', 'icon' => 'bi-list-ul', 'url' => $addrow . 'synclog'],
-        ];
+        $main = '';
+        $tools = '';
 
-        $html = '<div class="rs-nav"><ul class="nav nav-tabs-custom border-0 mb-0" role="tablist">';
-        foreach ($tabs as $key => $tab) {
-            $html .= '<li class="nav-item">'
-                . '<a class="nav-link' . ($key === $active ? ' active' : '') . '"'
-                . ' href="' . htmlspecialchars($tab['url'], ENT_QUOTES, 'UTF-8') . '">'
-                . '<i class="bi ' . $tab['icon'] . '"></i> '
-                . htmlspecialchars($tab['label'], ENT_QUOTES, 'UTF-8')
+        foreach ($sections as $key => $meta) {
+            // Surface the work waiting on the admin at the section level, so it
+            // is visible without opening Provisioning first.
+            $badge = '';
+            if ($key === 'provisioning' && $pending > 0) {
+                $badge = '<span class="badge text-bg-secondary ms-2">' . $pending . '</span>';
+            }
+
+            $item = '<li class="nav-item">'
+                . '<a class="nav-link' . ($key === $section ? ' active' : '') . '"'
+                . ' href="' . htmlspecialchars($this->navUrl($this->sectionLanding($key)), ENT_QUOTES, 'UTF-8') . '">'
+                . '<i class="bi ' . $meta['icon'] . '"></i> '
+                . htmlspecialchars($meta['label'], ENT_QUOTES, 'UTF-8')
+                . $badge
                 . '</a></li>';
-        }
-        $html .= '</ul></div>';
 
-        return $html;
+            if (!empty($meta['tool'])) {
+                $tools .= $item;
+            } else {
+                $main .= $item;
+            }
+        }
+
+        return '<div class="rs-nav">'
+            . '<ul class="nav nav-tabs-custom border-0 mb-0" role="tablist">' . $main . '</ul>'
+            . '<ul class="nav nav-tabs-custom border-0 mb-0 rs-nav-tools" role="tablist">' . $tools . '</ul>'
+            . '</div>';
     }
 
     /**
-     * Renders an admin management screen: scoped styles, the tab bar, and the
-     * view, all inside the .rs-module wrapper.
+     * Builds the second-level tabs for a section, in the shape
+     * Widget::setTabs() expects.
+     *
+     * Returns an empty array for single-screen sections, so the view simply
+     * renders no sub-navigation.
+     *
+     * @param string $section The active section key
+     * @param string $active The active page key within that section
+     * @return array
+     */
+    private function sectionTabs($section, $active)
+    {
+        $sections = $this->navSections();
+        $pages = isset($sections[$section]['pages']) ? $sections[$section]['pages'] : [];
+
+        if (count($pages) < 2) {
+            return [];
+        }
+
+        $tabs = [];
+        foreach ($pages as $key => $meta) {
+            $label = '<i class="bi ' . $meta['icon'] . ' me-1"></i>'
+                . htmlspecialchars($meta['label'], ENT_QUOTES, 'UTF-8');
+
+            if ($key === 'pendingorders' && ($count = $this->pendingBadgeCount()) > 0) {
+                $label .= '<span class="badge text-bg-secondary ms-2">' . $count . '</span>';
+            }
+
+            $tabs[] = [
+                'name' => $label,
+                'current' => ($key === $active),
+                'attributes' => ['href' => $this->navUrl($key)],
+            ];
+        }
+
+        return $tabs;
+    }
+
+    /**
+     * Renders an admin management screen: scoped styles, the section strip and
+     * the view, all inside the .rs-module wrapper.
+     *
+     * The view receives $section_tabs, which it passes to Widget::setTabs() to
+     * draw the section's second-level navigation. It is an empty array for
+     * single-screen sections, so those views render no sub-navigation.
      *
      * @param string $view View name
-     * @param string $active Active tab key
+     * @param string $section Active section key (see navSections())
+     * @param string $active Active page key within that section
      * @param array $data View variables
      * @return string
      */
-    private function renderManageScreen($view, $active, array $data)
+    private function renderManageScreen($view, $section, $active, array $data)
     {
-        return $this->wrap($this->manageNav($active) . $this->renderViewRaw($view, $data));
+        $data['section_tabs'] = $this->sectionTabs($section, $active);
+
+        return $this->wrap($this->manageNav($section) . $this->renderViewRaw($view, $data));
     }
 
     /**

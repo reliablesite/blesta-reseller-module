@@ -13,6 +13,10 @@ if (!empty($error)) {
 }
 
 $this->Widget->clear();
+if (!empty($section_tabs)) {
+    $this->Widget->setTabs($section_tabs);
+    $this->Widget->setNavStyle('nav-tabs-custom');
+}
 $this->Widget->setBodyWrapper(false);
 $this->Widget->create($this->_('Reliablesite.null_routes.box_title', true), ['id' => 'rs_null_routes']);
 ?>

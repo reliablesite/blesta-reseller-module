@@ -170,11 +170,12 @@ class ReliablesiteServerAssignment
     }
 
     /**
-     * Returns services awaiting server assignment for this module's packages.
+     * Builds the shared "awaiting server assignment" query, so the list and the
+     * count cannot drift apart.
      *
-     * @return array Array of stdClass service rows (with client + package data)
+     * @return Record The Record object with the query staged (not yet fetched)
      */
-    public function pendingServices()
+    private function pendingQuery()
     {
         return $this->module->Record->select([
                 'services.id',
@@ -198,7 +199,17 @@ class ReliablesiteServerAssignment
             ->where('service_fields.key', '=', 'reliablesite_pending')
             ->where('service_fields.value', '=', '1')
             ->where('services.status', 'in', ['active', 'pending'])
-            ->group(['services.id'])
+            ->group(['services.id']);
+    }
+
+    /**
+     * Returns services awaiting server assignment for this module's packages.
+     *
+     * @return array Array of stdClass service rows (with client + package data)
+     */
+    public function pendingServices()
+    {
+        return $this->pendingQuery()
             ->order(['services.date_added' => 'ASC'])
             ->fetchAll();
     }
@@ -206,11 +217,15 @@ class ReliablesiteServerAssignment
     /**
      * Returns the number of services awaiting assignment.
      *
+     * The navigation badge asks for this on every admin screen, so it must not
+     * hydrate rows: numResults() wraps the query as a COUNT(*) subquery, which
+     * also counts the GROUP BY correctly.
+     *
      * @return int
      */
     public function pendingCount()
     {
-        return count($this->pendingServices());
+        return $this->pendingQuery()->numResults();
     }
 
     /**

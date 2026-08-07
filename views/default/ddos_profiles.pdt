@@ -4,9 +4,23 @@ foreach ((array) $errors as $e) {
 }
 
 $this->Widget->clear();
+if (!empty($section_tabs)) {
+    $this->Widget->setTabs($section_tabs);
+    $this->Widget->setNavStyle('nav-tabs-custom');
+}
 $this->Widget->setBodyWrapper(false);
 $this->Widget->create('DDoS Profiles', ['id' => 'rs_ddos_profiles']);
 
+// The overlap between this screen and the per-server DDoS tab is the most
+// confusable part of the module, so say which is which up front.
+?>
+<div class="card-body border-bottom py-2 small text-muted">
+    <i class="bi bi-info-circle me-1"></i>
+    Profiles available across your account. To protect a specific IP, open the
+    server under <strong>Provisioning &rsaquo; Servers</strong> and use its
+    <strong>DDoS</strong> tab.
+</div>
+<?php
 if (empty($profiles)) {
 ?>
     <div class="card-body text-center text-muted py-5">
