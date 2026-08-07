@@ -32,20 +32,24 @@ $pct = $allowed > 0 ? min(100, round($used / $allowed * 100)) : 0;
     <div class="card-body">
         <div class="row">
             <div class="col-md-6">
-                <table class="table table-sm">
-                    <tr><td>CPU</td><td><?php echo $this->Html->safe($get('cpuName')); ?></td></tr>
-                    <tr><td>Memory</td><td><?php echo $this->Html->safe(trim($get('memorySize') . ' ' . $get('memoryType'))); ?></td></tr>
-                    <tr><td>RAID</td><td><?php echo $this->Html->safe($get('raidName')); ?></td></tr>
-                    <tr><td>OS</td><td><?php echo $this->Html->safe($get('operatingSystem')); ?></td></tr>
-                </table>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <tr><td>CPU</td><td><?php echo $this->Html->safe($get('cpuName')); ?></td></tr>
+                        <tr><td>Memory</td><td><?php echo $this->Html->safe(trim($get('memorySize') . ' ' . $get('memoryType'))); ?></td></tr>
+                        <tr><td>RAID</td><td><?php echo $this->Html->safe($get('raidName')); ?></td></tr>
+                        <tr><td>OS</td><td><?php echo $this->Html->safe($get('operatingSystem')); ?></td></tr>
+                    </table>
+                </div>
             </div>
             <div class="col-md-6">
-                <table class="table table-sm">
-                    <tr><td>Datacenter</td><td><?php echo $this->Html->safe($get('dataCenterLabel')); ?></td></tr>
-                    <tr><td>Primary IP</td><td><?php echo $this->Html->safe($primaryIp); ?></td></tr>
-                    <tr><td>Port speed</td><td><?php echo $this->Html->safe($get('portSpeed')); ?></td></tr>
-                    <tr><td>Server MAC</td><td><?php echo $this->Html->safe($get('serverMac')); ?></td></tr>
-                </table>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <tr><td>Datacenter</td><td><?php echo $this->Html->safe($get('dataCenterLabel')); ?></td></tr>
+                        <tr><td>Primary IP</td><td><?php echo $this->Html->safe($primaryIp); ?></td></tr>
+                        <tr><td>Port speed</td><td><?php echo $this->Html->safe($get('portSpeed')); ?></td></tr>
+                        <tr><td>Server MAC</td><td><?php echo $this->Html->safe($get('serverMac')); ?></td></tr>
+                    </table>
+                </div>
             </div>
         </div>
         <?php if ($allowed > 0) { ?>

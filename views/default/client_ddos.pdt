@@ -107,30 +107,32 @@ $hasBlocks = !empty($server_blocks);
         <?php if (empty($protected)) { ?>
             <p class="text-muted mb-0"><em>No DDoS profile assignments for this server.</em></p>
         <?php } else { ?>
-            <table class="table table-sm">
-                <thead>
-                <tr>
-                    <th>Profile</th>
-                    <th>IP</th>
-                    <th></th>
-                </tr>
-                </thead>
-                <?php foreach ($protected as $entry) { ?>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
                     <tr>
-                        <td><?php echo $this->Html->safe($entry['profile_name']); ?></td>
-                        <td class="rs-mono"><?php echo $this->Html->safe($entry['ip']); ?></td>
-                        <td>
-                            <?php $this->Form->create(); ?>
-                            <input type="hidden" name="action" value="ddos_remove" />
-                            <input type="hidden" name="data_source_id" value="<?php echo $this->Html->safe($entry['data_source_id']); ?>" />
-                            <input type="hidden" name="profile_id" value="<?php echo $this->Html->safe($entry['profile_id']); ?>" />
-                            <input type="hidden" name="ip_id" value="<?php echo $this->Html->safe($entry['ip_id']); ?>" />
-                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Remove this IP from the profile?');">Remove</button>
-                            <?php $this->Form->end(); ?>
-                        </td>
+                        <th>Profile</th>
+                        <th>IP</th>
+                        <th></th>
                     </tr>
-                <?php } ?>
-            </table>
+                    </thead>
+                    <?php foreach ($protected as $entry) { ?>
+                        <tr>
+                            <td><?php echo $this->Html->safe($entry['profile_name']); ?></td>
+                            <td class="rs-mono"><?php echo $this->Html->safe($entry['ip']); ?></td>
+                            <td>
+                                <?php $this->Form->create(); ?>
+                                <input type="hidden" name="action" value="ddos_remove" />
+                                <input type="hidden" name="data_source_id" value="<?php echo $this->Html->safe($entry['data_source_id']); ?>" />
+                                <input type="hidden" name="profile_id" value="<?php echo $this->Html->safe($entry['profile_id']); ?>" />
+                                <input type="hidden" name="ip_id" value="<?php echo $this->Html->safe($entry['ip_id']); ?>" />
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Remove this IP from the profile?');">Remove</button>
+                                <?php $this->Form->end(); ?>
+                            </td>
+                        </tr>
+                    <?php } ?>
+                </table>
+            </div>
         <?php } ?>
     </div>
 </div>

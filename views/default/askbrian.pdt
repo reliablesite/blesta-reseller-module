@@ -1,15 +1,16 @@
 <?php
-$this->Widget->clear();
-$this->Widget->create($this->_('Reliablesite.askbrian.box_title', true));
-?>
-<div class="inner">
-    <?php if (empty($has_key)) { ?>
-        <div class="alert alert-warning">
-            No ReliableSite API key is configured yet. Add your reseller API key in
-            <strong>Settings</strong> before using the assistant.
-        </div>
-    <?php } ?>
+if (empty($has_key)) {
+    echo '<div class="alert alert-warning d-flex align-items-center" role="alert">'
+        . '<i class="bi bi-exclamation-triangle-fill me-3 fs-5"></i>'
+        . '<div class="flex-grow-1"><p class="m-0">No ReliableSite API key is configured yet. '
+        . 'Add your reseller API key in <strong>Settings</strong> before using the assistant.</p></div>'
+        . '</div>';
+}
 
+$this->Widget->clear();
+$this->Widget->setBodyWrapper(false);
+$this->Widget->create($this->_('Reliablesite.askbrian.box_title', true), ['id' => 'rs_askbrian']);
+?>
     <div class="rs-brian" id="rs-brian">
         <div class="rs-brian-head">
             <div class="rs-brian-avatar"><i class="bi bi-robot"></i></div>
@@ -49,7 +50,6 @@ $this->Widget->create($this->_('Reliablesite.askbrian.box_title', true));
             <div class="rs-brian-hint">Enter to send &middot; Shift+Enter for a new line</div>
         </div>
     </div>
-</div>
 <script>
 (function () {
     var AJAX_URL = <?php echo json_encode($ajax_url); ?>;

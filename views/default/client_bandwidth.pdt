@@ -21,7 +21,7 @@ $hasData = !empty($bandwidth_series['labels']);
             <?php foreach ($periods as $p) { ?>
                 <?php $this->Form->create(); ?>
                 <input type="hidden" name="period" value="<?php echo $p; ?>" />
-                <button type="submit" class="btn btn-sm <?php echo ($period === $p ? 'btn-primary' : 'btn-default'); ?>"><?php echo $p; ?></button>
+                <button type="submit" class="btn btn-sm <?php echo ($period === $p ? 'btn-primary' : 'btn-secondary'); ?>"><?php echo $p; ?></button>
                 <?php $this->Form->end(); ?>
             <?php } ?>
         </div>

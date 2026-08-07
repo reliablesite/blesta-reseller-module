@@ -1,18 +1,24 @@
-<div class="pad">
-    <?php
-    if (!empty($is_assigned)) {
-        ?>
-        <p>
-            ReliableSite server <strong><?php echo $this->Html->safe($server_label !== '' ? $server_label : $server_id); ?></strong>
-            is assigned to this service<?php echo ($username !== '' ? ' (customer ' . $this->Html->safe($username) . ')' : ''); ?>.
-        </p>
-        <a class="btn btn-primary" href="<?php echo $this->Html->safe($manage_link); ?>">Manage Server</a>
-        <?php
-    } else {
-        ?>
-        <p>No server is assigned to this service yet.</p>
-        <a class="btn btn-primary" href="<?php echo $this->Html->safe($assign_link); ?>">Go to Pending Orders</a>
-        <?php
-    }
-    ?>
-</div>
+<?php
+// Rendered inside the service page's own card, so no Widget wrapper here.
+if (!empty($is_assigned)) {
+?>
+    <p>
+        ReliableSite server
+        <strong><?php echo $this->Html->safe($server_label !== '' ? $server_label : $server_id); ?></strong>
+        is assigned to this service<?php echo ($username !== '' ? ' (customer ' . $this->Html->safe($username) . ')' : ''); ?>.
+    </p>
+    <a class="btn btn-primary" href="<?php echo $this->Html->safe($manage_link); ?>">
+        <i class="bi bi-hdd-rack me-1"></i>Manage Server
+    </a>
+<?php
+} else {
+?>
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-hourglass-split" style="font-size:3rem;opacity:.3"></i>
+        <p class="mt-3 mb-3">No server is assigned to this service yet.</p>
+        <a class="btn btn-primary" href="<?php echo $this->Html->safe($assign_link); ?>">
+            <i class="bi bi-box-arrow-up-right me-1"></i>Go to Pending Orders
+        </a>
+    </div>
+<?php
+}

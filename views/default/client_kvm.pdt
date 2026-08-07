@@ -29,11 +29,13 @@ $kget = function ($keys) use ($kvm) {
     <div class="card-body">
         <?php if ($enabled) { ?>
             <p>KVM access is currently <span class="badge badge-success">enabled</span>.</p>
-            <table class="table table-sm">
-                <tr><td>IP / Host</td><td><?php echo $this->Html->safe($kget(['ipAddress', 'ip', 'host'])); ?></td></tr>
-                <tr><td>Username</td><td><?php echo $this->Html->safe($kget(['userName', 'user', 'username'])); ?></td></tr>
-                <tr><td>Password</td><td><?php echo $this->Html->safe($kget(['password'])); ?></td></tr>
-            </table>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <tr><td>IP / Host</td><td><?php echo $this->Html->safe($kget(['ipAddress', 'ip', 'host'])); ?></td></tr>
+                    <tr><td>Username</td><td><?php echo $this->Html->safe($kget(['userName', 'user', 'username'])); ?></td></tr>
+                    <tr><td>Password</td><td><?php echo $this->Html->safe($kget(['password'])); ?></td></tr>
+                </table>
+            </div>
             <?php $this->Form->create(); ?>
             <input type="hidden" name="action" value="disable_kvm" />
             <button type="submit" class="btn btn-danger btn-sm">Disable KVM</button>

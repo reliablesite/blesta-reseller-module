@@ -1,10 +1,16 @@
 <?php
-    $this->Widget->clear();
-    $this->Widget->create($this->_("AdminCompanyModules.manage.boxtitle_manage", true, (isset($module->name) ? $this->Html->safe($module->name) : null)), array('id'=>"manage_reliablesite"));
-    ?>
-        <div class="inner">
-            <div class="error_box error"><?php $this->_("Reliablesite.!error.invalid_action"); ?></div>
-        </div>
-    <?php
-    $this->Widget->end();
+$this->Widget->clear();
+// Rendered via renderView('invalid_action', []), so no $module is in scope -
+// the module name is supplied directly rather than yielding "Manage ".
+// Widget::create() escapes the title itself, so pass it unescaped.
+$this->Widget->create(
+    $this->_('AdminCompanyModules.manage.boxtitle_manage', true, $this->_('Reliablesite.name', true)),
+    ['id' => 'rs_invalid_action']
+);
 ?>
+<div class="text-center text-muted py-5">
+    <i class="bi bi-question-circle" style="font-size:3rem;opacity:.3"></i>
+    <p class="mt-3 mb-0"><?php $this->_('Reliablesite.!error.invalid_action'); ?></p>
+</div>
+<?php
+$this->Widget->end();

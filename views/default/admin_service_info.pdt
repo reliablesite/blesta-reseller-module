@@ -1,26 +1,30 @@
-<table class="table">
-    <thead>
-    <tr>
-        <th><?php $this->_('Reliablesite.service_field.username'); ?></th>
-        <th><?php $this->_('Reliablesite.service_field.server_id'); ?></th>
-        <th><?php $this->_('Reliablesite.service_field.server_label'); ?></th>
-        <th>Status</th>
-    </tr>
-    </thead>
-    <tr>
-        <td><?php echo $this->Html->safe(isset($service_fields->reliablesite_username) ? $service_fields->reliablesite_username : ''); ?></td>
-        <td><?php echo $this->Html->safe(isset($service_fields->reliablesite_server_id) ? $service_fields->reliablesite_server_id : ''); ?></td>
-        <td><?php echo $this->Html->safe(isset($service_fields->reliablesite_server_label) ? $service_fields->reliablesite_server_label : ''); ?></td>
-        <td>
-            <?php
-            if (!empty($pending)) {
-                echo '<span class="badge text-bg-warning">Awaiting assignment</span>';
-            } elseif (!empty($server['status'])) {
-                echo $this->Html->safe($server['status']);
-            } else {
-                echo '-';
-            }
-            ?>
-        </td>
-    </tr>
-</table>
+<div class="table-responsive">
+    <table class="table table-hover mb-0">
+        <thead>
+            <tr>
+                <th><?php $this->_('Reliablesite.service_field.username'); ?></th>
+                <th><?php $this->_('Reliablesite.service_field.server_id'); ?></th>
+                <th><?php $this->_('Reliablesite.service_field.server_label'); ?></th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><?php echo $this->Html->safe($service_fields->reliablesite_username ?? ''); ?></td>
+                <td><?php echo $this->Html->safe($service_fields->reliablesite_server_id ?? ''); ?></td>
+                <td><?php echo $this->Html->safe($service_fields->reliablesite_server_label ?? ''); ?></td>
+                <td>
+                    <?php
+                    if (!empty($pending)) {
+                        echo '<span class="badge text-bg-warning">Awaiting assignment</span>';
+                    } elseif (!empty($server['status'])) {
+                        echo $this->Html->safe($server['status']);
+                    } else {
+                        echo '<span class="text-muted">-</span>';
+                    }
+                    ?>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>

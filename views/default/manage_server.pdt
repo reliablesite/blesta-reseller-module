@@ -1,36 +1,69 @@
 <?php
+if (!empty($notice)) {
+    echo '<div class="alert alert-success alert-dismissible fade show d-flex align-items-center" role="alert">'
+        . '<i class="bi bi-check-circle-fill me-3 fs-5"></i>'
+        . '<div class="flex-grow-1"><p class="m-0">' . $this->Html->safe($notice) . '</p></div>'
+        . '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
+}
+if (!empty($error)) {
+    echo '<div class="alert alert-danger alert-dismissible fade show d-flex align-items-center" role="alert">'
+        . '<i class="bi bi-x-circle-fill me-3 fs-5"></i>'
+        . '<div class="flex-grow-1"><p class="m-0">' . $this->Html->safe($error) . '</p></div>'
+        . '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
+}
+
+$link_buttons = [[
+    'name' => 'Back to servers',
+    'icon' => 'bi bi-arrow-left',
+    'attributes' => ['href' => $back_link],
+]];
+
+if ($server_id === '') {
+    $this->Widget->clear();
+    $this->Widget->setLinkButtons($link_buttons);
+    $this->Widget->create('Manage Server', ['id' => 'rs_manage_server']);
+    ?>
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-hdd-rack" style="font-size:3rem;opacity:.3"></i>
+        <p class="mt-3 mb-0">No server selected.</p>
+    </div>
+    <?php
+    $this->Widget->end();
+    return;
+}
+
+$sid = $this->Html->safe($server_id);
+$hidden = '<input type="hidden" name="scr" value="manageserver" /><input type="hidden" name="rsid" value="' . $sid . '" />';
+
+$pages = [
+    'overview'  => ['Overview', 'bi-info-circle'],
+    'os'        => ['Reinstall OS', 'bi-disc'],
+    'kvm'       => ['KVM', 'bi-display'],
+    'bandwidth' => ['Bandwidth', 'bi-graph-up'],
+    'backups'   => ['Backups', 'bi-archive'],
+    'rdns'      => ['Reverse DNS', 'bi-signpost'],
+    'mac'       => ['MAC', 'bi-ethernet'],
+    'ddos'      => ['DDoS', 'bi-shield-check'],
+];
+
+$tabs = [];
+foreach ($pages as $key => $meta) {
+    $tabs[] = [
+        'name' => '<i class="bi ' . $meta[1] . ' me-1"></i>' . $meta[0],
+        'current' => ($page === $key),
+        'attributes' => ['href' => $this->Html->safe($srv_base . 'p=' . $key)],
+    ];
+}
+
 $this->Widget->clear();
-$this->Widget->create('Manage Server' . ($server_id !== '' ? ' #' . $this->Html->safe($server_id) : ''));
+$this->Widget->setLinkButtons($link_buttons);
+$this->Widget->setTabs($tabs);
+$this->Widget->setNavStyle('nav-tabs-custom');
+$this->Widget->create(
+    'Manage Server' . ($server_id !== '' ? ' #' . $server_id : ''),
+    ['id' => 'rs_manage_server']
+);
 ?>
-<div class="inner">
-    <div class="pad">
-        <div class="mb-2">
-            <a class="btn btn-outline-secondary btn-sm" href="<?php echo $this->Html->safe($back_link); ?>">&laquo; Back to servers</a>
-        </div>
-        <?php
-        if (!empty($notice)) {
-            echo '<div class="alert alert-success">' . $this->Html->safe($notice) . '</div>';
-        }
-        if (!empty($error)) {
-            echo '<div class="alert alert-danger">' . $this->Html->safe($error) . '</div>';
-        }
-        if ($server_id === '') {
-            echo '<div class="alert alert-warning">No server selected.</div>';
-            $this->Widget->end();
-            return;
-        }
-
-        $sid = $this->Html->safe($server_id);
-        $hidden = '<input type="hidden" name="scr" value="manageserver" /><input type="hidden" name="rsid" value="' . $sid . '" />';
-        $tabs = ['overview' => 'Overview', 'os' => 'Reinstall OS', 'kvm' => 'KVM', 'bandwidth' => 'Bandwidth', 'backups' => 'Backups', 'rdns' => 'Reverse DNS', 'mac' => 'MAC', 'ddos' => 'DDoS'];
-        ?>
-        <ul class="nav nav-pills mb-3">
-            <?php foreach ($tabs as $k => $lbl) {
-                $a = ($page === $k) ? ' active' : ''; ?>
-                <li class="nav-item"><a class="nav-link<?php echo $a; ?>" href="<?php echo $this->Html->safe($srv_base . 'p=' . $k); ?>"><?php echo $lbl; ?></a></li>
-            <?php } ?>
-        </ul>
-
         <?php
         // ===================== OVERVIEW =====================
         if ($page === 'overview') {
@@ -42,31 +75,59 @@ $this->Widget->create('Manage Server' . ($server_id !== '' ? ' #' . $this->Html-
             $allowed = (float) $g('bandwidthAllowed');
             $pct = $allowed > 0 ? min(100, round($used / $allowed * 100)) : 0;
             ?>
-            <div class="row">
+            <div class="row g-4">
                 <div class="col-md-6">
-                    <table class="table">
-                        <tr><td>Label</td><td><?php echo $this->Html->safe($g('serverLabel')); ?></td></tr>
-                        <tr><td>Status</td><td><?php echo $this->Html->safe($g('status')); ?></td></tr>
-                        <tr><td>Datacenter</td><td><?php echo $this->Html->safe($g('dataCenterLabel')); ?></td></tr>
-                        <tr><td>OS</td><td><?php echo $this->Html->safe($g('operatingSystem')); ?></td></tr>
+                    <h6 class="form-section-header">Server</h6>
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <tr><th class="text-muted fw-normal" style="width:40%">Label</th><td><?php echo $this->Html->safe($g('serverLabel')); ?></td></tr>
+                            <tr><th class="text-muted fw-normal">Status</th><td><?php echo $this->Html->safe($g('status')); ?></td></tr>
+                            <tr><th class="text-muted fw-normal">Datacenter</th><td><?php echo $this->Html->safe($g('dataCenterLabel')); ?></td></tr>
+                            <tr><th class="text-muted fw-normal">Operating system</th><td><?php echo $this->Html->safe($g('operatingSystem')); ?></td></tr>
+                        </tbody>
                     </table>
                 </div>
                 <div class="col-md-6">
-                    <table class="table">
-                        <tr><td>CPU</td><td><?php echo $this->Html->safe($g('cpuName')); ?></td></tr>
-                        <tr><td>Memory</td><td><?php echo $this->Html->safe(trim($g('memorySize') . ' ' . $g('memoryType'))); ?></td></tr>
-                        <tr><td>Primary IP</td><td><?php echo $this->Html->safe($primaryIp); ?></td></tr>
-                        <tr><td>Server MAC</td><td><?php echo $this->Html->safe($g('serverMac')); ?></td></tr>
+                    <h6 class="form-section-header">Hardware</h6>
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <tr><th class="text-muted fw-normal" style="width:40%">CPU</th><td><?php echo $this->Html->safe($g('cpuName')); ?></td></tr>
+                            <tr><th class="text-muted fw-normal">Memory</th><td><?php echo $this->Html->safe(trim($g('memorySize') . ' ' . $g('memoryType'))); ?></td></tr>
+                            <tr><th class="text-muted fw-normal">Primary IP</th><td class="rs-mono"><?php echo $this->Html->safe($primaryIp); ?></td></tr>
+                            <tr><th class="text-muted fw-normal">Server MAC</th><td class="rs-mono"><?php echo $this->Html->safe($g('serverMac')); ?></td></tr>
+                        </tbody>
                     </table>
                 </div>
             </div>
+
             <?php if ($allowed > 0) { ?>
-                <p class="text-muted mt-2 mb-1">Bandwidth: <?php echo $this->Html->safe($used); ?> / <?php echo $this->Html->safe($allowed); ?> GB (<?php echo $pct; ?>%)</p>
+                <h6 class="form-section-header mt-4">Bandwidth</h6>
+                <div class="d-flex justify-content-between small text-muted mb-1">
+                    <span><?php echo $this->Html->safe($used); ?> GB of <?php echo $this->Html->safe($allowed); ?> GB used</span>
+                    <span><?php echo $pct; ?>%</span>
+                </div>
+                <div class="progress" role="progressbar" aria-label="Bandwidth used"
+                    aria-valuenow="<?php echo $pct; ?>" aria-valuemin="0" aria-valuemax="100" style="height:8px">
+                    <div class="progress-bar<?php echo ($pct >= 90 ? ' bg-danger' : ($pct >= 75 ? ' bg-warning' : '')); ?>"
+                        style="width: <?php echo $pct; ?>%"></div>
+                </div>
             <?php } ?>
-            <div class="rs-actions mt-2">
-                <a class="btn btn-success btn-sm" href="<?php echo $this->Html->safe($srv_base . 'action=power_on&p=overview'); ?>">Power On</a>
-                <a class="btn btn-danger btn-sm rs-confirm" href="<?php echo $this->Html->safe($srv_base . 'action=power_off&p=overview'); ?>" data-confirm-title="Power off server" data-confirm-button="Power Off" data-confirm-message="Power off this server?">Power Off</a>
-                <a class="btn btn-outline-secondary btn-sm rs-confirm" href="<?php echo $this->Html->safe($srv_base . 'action=unassign&p=overview'); ?>" data-confirm-title="Unassign server" data-confirm-button="Unassign" data-confirm-message="Unassign this server? The service returns to Pending Orders.">Unassign</a>
+
+            <h6 class="form-section-header mt-4">Power</h6>
+            <div class="rs-actions">
+                <a class="btn btn-sm btn-success" href="<?php echo $this->Html->safe($srv_base . 'action=power_on&p=overview'); ?>">
+                    <i class="bi bi-play-fill me-1"></i>Power On
+                </a>
+                <a class="btn btn-sm btn-danger rs-confirm" href="<?php echo $this->Html->safe($srv_base . 'action=power_off&p=overview'); ?>"
+                    data-confirm-title="Power off server" data-confirm-button="Power Off"
+                    data-confirm-message="Power off this server?">
+                    <i class="bi bi-power me-1"></i>Power Off
+                </a>
+                <a class="btn btn-sm btn-outline-danger rs-confirm ms-auto" href="<?php echo $this->Html->safe($srv_base . 'action=unassign&p=overview'); ?>"
+                    data-confirm-title="Unassign server" data-confirm-button="Unassign"
+                    data-confirm-message="Unassign this server? The service returns to Pending Orders.">
+                    <i class="bi bi-x-lg me-1"></i>Unassign
+                </a>
             </div>
             <?php
         // ===================== OS REINSTALL =====================
@@ -78,7 +139,10 @@ $this->Widget->create('Manage Server' . ($server_id !== '' ? ' #' . $this->Html-
                 }
             }
             ?>
-            <p class="text-danger">Reinstalling the OS erases all data on the server.</p>
+            <div class="alert alert-warning d-flex align-items-center" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-3 fs-5"></i>
+                <div class="flex-grow-1"><p class="m-0">Reinstalling the OS erases all data on this server.</p></div>
+            </div>
             <form method="get">
                 <?php echo $hidden; ?>
                 <input type="hidden" name="p" value="os" />
@@ -96,9 +160,17 @@ $this->Widget->create('Manage Server' . ($server_id !== '' ? ' #' . $this->Html-
                 <div class="mb-3"><label class="form-label">Partitioning Scheme ID</label><input type="text" name="partitioning_scheme_id" class="form-control" /></div>
                 <div class="mb-3"><label class="form-label">Server IP</label><input type="text" name="server_ip" class="form-control" /></div>
                 <div class="mb-3"><label class="form-label">License Key (optional)</label><input type="text" name="license_key" class="form-control" /></div>
-                <button type="submit" class="btn btn-danger btn-sm rs-confirm" data-confirm-title="Reinstall operating system" data-confirm-button="Reinstall" data-confirm-message="Reinstall the OS? All data on this server will be erased.">Start Reinstall</button>
+                <div class="rs-actions">
+                    <button type="submit" class="btn btn-danger rs-confirm"
+                        data-confirm-title="Reinstall operating system" data-confirm-button="Reinstall"
+                        data-confirm-message="Reinstall the OS? All data on this server will be erased.">
+                        <i class="bi bi-disc me-1"></i>Start Reinstall
+                    </button>
+                    <a class="btn btn-outline-secondary ms-auto" href="<?php echo $this->Html->safe($srv_base . 'action=os_cancel&p=os'); ?>">
+                        Cancel in-progress install
+                    </a>
+                </div>
             </form>
-            <p class="mt-2"><a class="btn btn-outline-secondary btn-sm" href="<?php echo $this->Html->safe($srv_base . 'action=os_cancel&p=os'); ?>">Cancel In-Progress Install</a></p>
             <?php
         // ===================== KVM =====================
         } elseif ($page === 'kvm') {
@@ -112,21 +184,32 @@ $this->Widget->create('Manage Server' . ($server_id !== '' ? ' #' . $this->Html-
                 return '';
             };
             if ($enabled) { ?>
-                <p>KVM is <span class="badge text-bg-success">enabled</span>.</p>
-                <table class="table">
-                    <tr><td>Host</td><td><?php echo $this->Html->safe($kget(['ipAddress', 'ip', 'host'])); ?></td></tr>
-                    <tr><td>Username</td><td><?php echo $this->Html->safe($kget(['userName', 'user', 'username'])); ?></td></tr>
-                    <tr><td>Password</td><td><?php echo $this->Html->safe($kget(['password'])); ?></td></tr>
+                <p class="mb-3">KVM is <span class="badge text-bg-success">enabled</span>.</p>
+                <table class="table table-sm">
+                    <tbody>
+                        <tr><th class="text-muted fw-normal" style="width:30%">Host</th><td class="rs-mono"><?php echo $this->Html->safe($kget(['ipAddress', 'ip', 'host'])); ?></td></tr>
+                        <tr><th class="text-muted fw-normal">Username</th><td class="rs-mono"><?php echo $this->Html->safe($kget(['userName', 'user', 'username'])); ?></td></tr>
+                        <tr><th class="text-muted fw-normal">Password</th><td class="rs-mono"><?php echo $this->Html->safe($kget(['password'])); ?></td></tr>
+                    </tbody>
                 </table>
-                <a class="btn btn-danger btn-sm" href="<?php echo $this->Html->safe($srv_base . 'action=disable_kvm&p=kvm'); ?>">Disable KVM</a>
+                <a class="btn btn-danger rs-confirm" href="<?php echo $this->Html->safe($srv_base . 'action=disable_kvm&p=kvm'); ?>"
+                    data-confirm-title="Disable KVM" data-confirm-button="Disable"
+                    data-confirm-message="Disable KVM access for this server?">
+                    <i class="bi bi-display me-1"></i>Disable KVM
+                </a>
             <?php } else { ?>
-                <p>KVM is <span class="badge text-bg-secondary">disabled</span>.</p>
+                <p class="mb-3">KVM is <span class="badge text-bg-secondary">disabled</span>.</p>
                 <form method="get">
                     <?php echo $hidden; ?>
                     <input type="hidden" name="p" value="kvm" />
                     <input type="hidden" name="action" value="enable_kvm" />
-                    <div class="mb-3"><label class="form-label">Allowed IP</label><input type="text" name="remote_ip" class="form-control" value="<?php echo $this->Html->safe($client_ip); ?>" /></div>
-                    <button type="submit" class="btn btn-primary btn-sm">Enable KVM</button>
+                    <div class="mb-3">
+                        <label for="rs_kvm_ip" class="form-label">Allowed IP</label>
+                        <input type="text" name="remote_ip" id="rs_kvm_ip" class="form-control"
+                            value="<?php echo $this->Html->safe($client_ip); ?>" />
+                        <div class="form-text">KVM access is restricted to this address.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-display me-1"></i>Enable KVM</button>
                 </form>
             <?php }
         // ===================== BANDWIDTH =====================
@@ -140,7 +223,10 @@ $this->Widget->create('Manage Server' . ($server_id !== '' ? ' #' . $this->Html-
                 <?php } ?>
             </div>
             <?php if (!$hasData) { ?>
-                <p class="text-muted">No bandwidth data available for this period.</p>
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-graph-up" style="font-size:3rem;opacity:.3"></i>
+                    <p class="mt-3 mb-0">No bandwidth data available for this period.</p>
+                </div>
             <?php } else { ?>
                 <div id="rs-bw-chart-admin" class="rs-chart"></div>
                 <script type="text/javascript" src="<?php echo $this->Html->safe($this->view_dir . 'js/rs-charts.js'); ?>"></script>
@@ -155,7 +241,9 @@ $this->Widget->create('Manage Server' . ($server_id !== '' ? ' #' . $this->Html-
         // ===================== BACKUPS =====================
         } elseif ($page === 'backups') {
             if (empty($backups)) {
-                echo '<p class="text-muted">No backup storage is provisioned for this server.</p>';
+                echo '<div class="text-center text-muted py-5">'
+                    . '<i class="bi bi-archive" style="font-size:3rem;opacity:.3"></i>'
+                    . '<p class="mt-3 mb-0">No backup storage is provisioned for this server.</p></div>';
             }
             foreach ((array) $backups as $acct) {
                 if (!is_array($acct)) {
@@ -165,17 +253,35 @@ $this->Widget->create('Manage Server' . ($server_id !== '' ? ' #' . $this->Html-
                 $user = isset($acct['username']) ? $acct['username'] : (isset($acct['ftpUsername']) ? $acct['ftpUsername'] : '');
                 $en = !empty($acct['enabled']) || !empty($acct['enable']);
                 ?>
-                <div class="border rounded p-2 mb-2">
-                    <p class="mb-1"><strong>Account:</strong> <?php echo $this->Html->safe($user); ?>
-                        <?php echo $en ? '<span class="badge text-bg-success">Enabled</span>' : '<span class="badge text-bg-secondary">Disabled</span>'; ?></p>
+                <div class="border rounded p-3 mb-3">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <strong><?php echo $this->Html->safe($user); ?></strong>
+                        <?php echo $en
+                            ? '<span class="badge text-bg-success">Enabled</span>'
+                            : '<span class="badge text-bg-secondary">Disabled</span>'; ?>
+                    </div>
                     <form method="get">
                         <?php echo $hidden; ?>
                         <input type="hidden" name="p" value="backups" />
                         <input type="hidden" name="action" value="set_backup" />
                         <input type="hidden" name="ftp_account_id" value="<?php echo $this->Html->safe($ftpId); ?>" />
-                        <label class="inline"><input type="checkbox" name="enable" value="1" <?php echo $en ? 'checked' : ''; ?> /> Enabled</label>
-                        <input type="password" name="password" class="form-control d-inline-block" placeholder="New FTP password" style="width:220px" />
-                        <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-sm-auto">
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" name="enable" value="1" class="form-check-input"
+                                        id="rs_bk_<?php echo $this->Html->safe($ftpId); ?>"<?php echo $en ? ' checked' : ''; ?> />
+                                    <label class="form-check-label" for="rs_bk_<?php echo $this->Html->safe($ftpId); ?>">Enabled</label>
+                                </div>
+                            </div>
+                            <div class="col-sm">
+                                <label class="form-label" for="rs_bkpw_<?php echo $this->Html->safe($ftpId); ?>">New FTP password</label>
+                                <input type="password" name="password" class="form-control"
+                                    id="rs_bkpw_<?php echo $this->Html->safe($ftpId); ?>" placeholder="Leave blank to keep current" />
+                            </div>
+                            <div class="col-sm-auto">
+                                <button type="submit" class="btn btn-primary">Save</button>
+                            </div>
+                        </div>
                     </form>
                 </div>
                 <?php
@@ -188,8 +294,8 @@ $this->Widget->create('Manage Server' . ($server_id !== '' ? ' #' . $this->Html-
                 <input type="hidden" name="p" value="rdns" />
                 <input type="hidden" name="action" value="set_rdns" />
                 <div class="mb-3">
-                    <label class="form-label">IP Block</label>
-                    <select name="ip_address_id" class="form-select">
+                    <label for="rs_rdns_block" class="form-label">IP Block</label>
+                    <select name="ip_address_id" id="rs_rdns_block" class="form-select">
                         <?php foreach ((array) $ip_blocks as $blk) {
                             $bid = isset($blk['ipAddressId']) ? $blk['ipAddressId'] : '';
                             $bdesc = isset($blk['ipDescription']) ? $blk['ipDescription'] : $bid; ?>
@@ -197,9 +303,16 @@ $this->Widget->create('Manage Server' . ($server_id !== '' ? ' #' . $this->Html-
                         <?php } ?>
                     </select>
                 </div>
-                <div class="mb-3"><label class="form-label">IP Address</label><input type="text" name="ip_address" class="form-control" /></div>
-                <div class="mb-3"><label class="form-label">Hostname (PTR)</label><input type="text" name="rdns" class="form-control" placeholder="host.example.com." /></div>
-                <button type="submit" class="btn btn-primary btn-sm">Save rDNS</button>
+                <div class="mb-3">
+                    <label for="rs_rdns_ip" class="form-label">IP Address</label>
+                    <input type="text" name="ip_address" id="rs_rdns_ip" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label for="rs_rdns_host" class="form-label">Hostname (PTR)</label>
+                    <input type="text" name="rdns" id="rs_rdns_host" class="form-control" placeholder="host.example.com." />
+                    <div class="form-text">Include the trailing dot.</div>
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save rDNS</button>
             </form>
             <?php
         // ===================== MAC =====================
@@ -210,17 +323,25 @@ $this->Widget->create('Manage Server' . ($server_id !== '' ? ' #' . $this->Html-
                 <input type="hidden" name="p" value="mac" />
                 <input type="hidden" name="action" value="set_mac" />
                 <div class="mb-3">
-                    <label class="form-label">IP Address</label>
-                    <select name="ip" class="form-select">
+                    <label for="rs_mac_ip" class="form-label">IP Address</label>
+                    <select name="ip" id="rs_mac_ip" class="form-select">
                         <?php foreach ((array) $ip_blocks as $blk) {
                             $desc = isset($blk['ipDescription']) ? $blk['ipDescription'] : ''; ?>
                             <option value="<?php echo $this->Html->safe($desc); ?>"><?php echo $this->Html->safe($desc); ?></option>
                         <?php } ?>
                     </select>
                 </div>
-                <div class="mb-3"><label class="inline"><input type="checkbox" name="custom_mac_enable" value="1" /> Use a custom MAC</label></div>
-                <div class="mb-3"><label class="form-label">Custom MAC</label><input type="text" name="custom_mac" class="form-control" placeholder="AA:BB:CC:DD:EE:FF" /></div>
-                <button type="submit" class="btn btn-primary btn-sm">Save MAC</button>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input type="checkbox" name="custom_mac_enable" value="1" class="form-check-input" id="rs_mac_enable" />
+                        <label class="form-check-label" for="rs_mac_enable">Use a custom MAC</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="rs_mac_value" class="form-label">Custom MAC</label>
+                    <input type="text" name="custom_mac" id="rs_mac_value" class="form-control" placeholder="AA:BB:CC:DD:EE:FF" />
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save MAC</button>
             </form>
             <?php
         // ===================== DDoS =====================
@@ -230,7 +351,7 @@ $this->Widget->create('Manage Server' . ($server_id !== '' ? ' #' . $this->Html-
             $prot = isset($protected) ? $protected : [];
             ?>
             <?php if (!empty($profileList) && !empty($blocks)) { ?>
-                <h5>Assign IP to profile</h5>
+                <h6 class="form-section-header">Assign IP to profile</h6>
                 <form method="get">
                     <?php echo $hidden; ?>
                     <input type="hidden" name="p" value="ddos" />
@@ -238,7 +359,7 @@ $this->Widget->create('Manage Server' . ($server_id !== '' ? ' #' . $this->Html-
                     <input type="hidden" name="data_source_id" id="rs_a_ds" value="" />
                     <input type="hidden" name="profile_id" id="rs_a_pid" value="" />
                     <div class="mb-3">
-                        <label class="form-label">Profile</label>
+                        <label for="rs_a_profile" class="form-label">Profile</label>
                         <select id="rs_a_profile" class="form-select"
                             onchange="var o=this.options[this.selectedIndex];document.getElementById('rs_a_ds').value=o.getAttribute('data-ds')||'';document.getElementById('rs_a_pid').value=o.getAttribute('data-pid')||'';">
                             <option value="">-- pick a profile --</option>
@@ -252,8 +373,8 @@ $this->Widget->create('Manage Server' . ($server_id !== '' ? ' #' . $this->Html-
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Subnet</label>
-                        <select class="form-select" onchange="document.getElementById('rs_a_ip').value=this.value;">
+                        <label for="rs_a_subnet" class="form-label">Subnet</label>
+                        <select id="rs_a_subnet" class="form-select" onchange="document.getElementById('rs_a_ip').value=this.value;">
                             <?php $firstCidr = '';
                             foreach ($blocks as $b) {
                                 $desc = isset($b['description']) ? $b['description'] : '';
@@ -263,33 +384,53 @@ $this->Widget->create('Manage Server' . ($server_id !== '' ? ' #' . $this->Html-
                             <?php } ?>
                         </select>
                     </div>
-                    <div class="mb-3"><label class="form-label">IP or CIDR</label><input type="text" name="ip_input" id="rs_a_ip" class="form-control" value="<?php echo $this->Html->safe($firstCidr); ?>" /></div>
-                    <button type="submit" class="btn btn-primary btn-sm">Assign</button>
+                    <div class="mb-3">
+                        <label for="rs_a_ip" class="form-label">IP or CIDR</label>
+                        <input type="text" name="ip_input" id="rs_a_ip" class="form-control"
+                            value="<?php echo $this->Html->safe($firstCidr); ?>" />
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-shield-check me-1"></i>Assign</button>
                 </form>
             <?php } elseif (empty($profileList)) { ?>
-                <div class="alert alert-info">No DDoS profiles are available for this server's datacenter.</div>
+                <div class="alert alert-info d-flex align-items-center" role="alert">
+                    <i class="bi bi-info-circle-fill me-3 fs-5"></i>
+                    <div class="flex-grow-1"><p class="m-0">No DDoS profiles are available for this server's datacenter.</p></div>
+                </div>
             <?php } ?>
 
-            <h5 class="mt-3">Currently protected (<?php echo (int) count($prot); ?>)</h5>
+            <h6 class="form-section-header mt-4">
+                Currently protected
+                <span class="badge text-bg-secondary ms-1"><?php echo (int) count($prot); ?></span>
+            </h6>
             <?php if (empty($prot)) { ?>
-                <p class="text-muted">No DDoS profile assignments for this server.</p>
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-shield-check" style="font-size:3rem;opacity:.3"></i>
+                    <p class="mt-3 mb-0">No DDoS profile assignments for this server.</p>
+                </div>
             <?php } else { ?>
-                <table class="table">
+                <table class="table table-sm table-hover mb-0">
                     <thead>
-                    <tr><th>Profile</th><th>IP</th><th></th></tr>
+                    <tr><th>Profile</th><th>IP</th><th class="text-end">Options</th></tr>
                     </thead>
+                    <tbody>
                     <?php foreach ($prot as $entry) { ?>
                         <tr>
                             <td><?php echo $this->Html->safe($entry['profile_name']); ?></td>
                             <td class="rs-mono"><?php echo $this->Html->safe($entry['ip']); ?></td>
-                            <td><a class="btn btn-danger btn-sm rs-confirm" href="<?php echo $this->Html->safe($srv_base . 'p=ddos&action=ddos_remove&data_source_id=' . urlencode($entry['data_source_id']) . '&profile_id=' . urlencode($entry['profile_id']) . '&ip_id=' . urlencode($entry['ip_id'])); ?>" data-confirm-title="Remove IP" data-confirm-button="Remove" data-confirm-message="Remove this IP from the profile?">Remove</a></td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-danger rs-confirm" title="Remove IP"
+                                    href="<?php echo $this->Html->safe($srv_base . 'p=ddos&action=ddos_remove&data_source_id=' . urlencode($entry['data_source_id']) . '&profile_id=' . urlencode($entry['profile_id']) . '&ip_id=' . urlencode($entry['ip_id'])); ?>"
+                                    data-confirm-title="Remove IP" data-confirm-button="Remove"
+                                    data-confirm-message="Remove this IP from the profile?">
+                                    <i class="bi bi-x-lg"></i>
+                                </a>
+                            </td>
                         </tr>
                     <?php } ?>
+                    </tbody>
                 </table>
             <?php }
         }
         ?>
-    </div>
-</div>
 <?php
 $this->Widget->end();

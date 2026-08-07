@@ -1,54 +1,79 @@
 <?php
 if (!empty($flash) && !empty($flash['msg'])) {
     $cls = (isset($flash['type']) && $flash['type'] === 'success') ? 'alert-success' : 'alert-danger';
-    echo '<div class="alert ' . $cls . '">' . $this->Html->safe($flash['msg']) . '</div>';
+    $icon = (isset($flash['type']) && $flash['type'] === 'success')
+        ? 'bi-check-circle-fill'
+        : 'bi-x-circle-fill';
+    echo '<div class="alert ' . $cls . ' alert-dismissible fade show d-flex align-items-center" role="alert">'
+        . '<i class="bi ' . $icon . ' me-3 fs-5"></i>'
+        . '<div class="flex-grow-1"><p class="m-0">' . $this->Html->safe($flash['msg']) . '</p></div>'
+        . '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>'
+        . '</div>';
 }
 
+// First run: no reseller credentials stored yet.
 if (!empty($needs_credential)) {
     $this->Widget->clear();
-    $this->Widget->create('ReliableSite');
+    $this->Widget->create('ReliableSite', ['id' => 'rs_welcome']);
     ?>
-    <div class="inner">
-        <div class="pad">
-            <p>Welcome to the ReliableSite module. To get started, add your reseller API credentials.</p>
-            <a class="btn btn-primary" href="<?php echo $this->Html->safe($add_link); ?>">Add API Credentials</a>
-        </div>
+    <div class="text-center py-5">
+        <div class="stat-card-icon mx-auto mb-3"><i class="bi bi-key"></i></div>
+        <h6 class="mb-2">Connect your ReliableSite account</h6>
+        <p class="text-muted mb-4">Add your reseller API credentials to start syncing the catalog and provisioning servers.</p>
+        <a class="btn btn-primary" href="<?php echo $this->Html->safe($add_link); ?>">
+            <i class="bi bi-plus-lg me-1"></i>Add API Credentials
+        </a>
     </div>
     <?php
     $this->Widget->end();
     return;
 }
 
-// Shared tab bar
+// Shared module tab bar
 echo $nav;
 
 $this->Widget->clear();
-$this->Widget->create('Overview' . ($account_name !== '' ? ' (' . $this->Html->safe($account_name) . ')' : ''), ['id' => 'manage_reliablesite']);
+// Widget::create() HTML-escapes the title itself (Html::_), so pass it raw -
+// escaping here would double-encode names containing & or quotes.
+$this->Widget->create(
+    'Overview' . ($account_name !== '' ? ' (' . $account_name . ')' : ''),
+    ['id' => 'rs_overview']
+);
 ?>
-<div class="inner">
-    <div class="pad">
-        <div class="rs-stats">
-            <a href="<?php echo $this->Html->safe($links['pending']); ?>" class="text-decoration-none">
-                <div class="rs-stat">
-                    <div class="rs-stat-num<?php echo ($stats['pending'] > 0 ? ' is-warning' : ''); ?>"><?php echo (int) $stats['pending']; ?></div>
-                    <div class="rs-stat-label"><i class="bi bi-hourglass-split"></i> Pending Orders</div>
+<div class="row g-3">
+    <div class="col-6 col-xl-4">
+        <a href="<?php echo $this->Html->safe($links['pending']); ?>" class="text-decoration-none">
+            <div class="stat-card stat-card-compact h-100">
+                <div class="stat-card-label"><i class="bi bi-hourglass-split me-1"></i>Pending Orders</div>
+                <div class="stat-card-value<?php echo ($stats['pending'] > 0 ? ' text-warning' : ''); ?>">
+                    <?php echo (int) $stats['pending']; ?>
                 </div>
-            </a>
-            <a href="<?php echo $this->Html->safe($links['catalog']); ?>" class="text-decoration-none">
-                <div class="rs-stat">
-                    <div class="rs-stat-num"><?php echo (int) $stats['tracked']; ?></div>
-                    <div class="rs-stat-label"><i class="bi bi-box-seam"></i> Tracked Products</div>
-                </div>
-            </a>
-            <a href="<?php echo $this->Html->safe($links['catalog']); ?>" class="text-decoration-none">
-                <div class="rs-stat">
-                    <div class="rs-stat-num is-text"><?php echo $this->Html->safe($stats['last_sync']); ?></div>
-                    <div class="rs-stat-label"><i class="bi bi-arrow-repeat"></i> Last Catalog Sync</div>
-                </div>
-            </a>
-        </div>
-        <p class="text-muted mt-3">Use the tabs above to manage pending orders, servers, the product catalog, customers, and DDoS protection.</p>
+                <div class="small text-muted">Awaiting server assignment</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-xl-4">
+        <a href="<?php echo $this->Html->safe($links['catalog']); ?>" class="text-decoration-none">
+            <div class="stat-card stat-card-compact h-100">
+                <div class="stat-card-label"><i class="bi bi-box-seam me-1"></i>Tracked Products</div>
+                <div class="stat-card-value"><?php echo (int) $stats['tracked']; ?></div>
+                <div class="small text-muted">Imported from the catalog</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-12 col-xl-4">
+        <a href="<?php echo $this->Html->safe($links['catalog']); ?>" class="text-decoration-none">
+            <div class="stat-card stat-card-compact h-100">
+                <div class="stat-card-label"><i class="bi bi-arrow-repeat me-1"></i>Last Catalog Sync</div>
+                <div class="stat-card-value rs-stat-value-sm"><?php echo $this->Html->safe($stats['last_sync']); ?></div>
+                <div class="small text-muted">Most recent sync run</div>
+            </div>
+        </a>
     </div>
 </div>
+
+<p class="text-muted small mb-0 mt-4">
+    Use the tabs above to manage pending orders, servers, the product catalog, customers and DDoS protection.
+</p>
 <?php
 $this->Widget->end();

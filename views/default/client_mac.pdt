@@ -30,7 +30,10 @@ if (!empty($error)) {
             </select>
         </div>
         <div class="form-group">
-            <label class="inline"><input type="checkbox" name="custom_mac_enable" id="rs_custom_mac" value="1" /> Use a custom MAC address</label>
+            <div class="form-check">
+                <input type="checkbox" name="custom_mac_enable" id="rs_custom_mac" value="1" class="form-check-input" />
+                <label class="form-check-label" for="rs_custom_mac">Use a custom MAC address</label>
+            </div>
         </div>
         <div class="form-group">
             <label>Custom MAC</label>

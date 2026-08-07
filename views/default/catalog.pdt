@@ -1,131 +1,245 @@
 <?php
-$this->Widget->clear();
-$this->Widget->create($this->_('Reliablesite.catalog.box_title', true));
+if (!empty($notice)) {
+    echo '<div class="alert alert-success alert-dismissible fade show d-flex align-items-center" role="alert">'
+        . '<i class="bi bi-check-circle-fill me-3 fs-5"></i>'
+        . '<div class="flex-grow-1"><p class="m-0">' . $this->Html->safe($notice) . '</p></div>'
+        . '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
+}
+if (!empty($error)) {
+    echo '<div class="alert alert-danger alert-dismissible fade show d-flex align-items-center" role="alert">'
+        . '<i class="bi bi-x-circle-fill me-3 fs-5"></i>'
+        . '<div class="flex-grow-1"><p class="m-0">' . $this->Html->safe($error) . '</p></div>'
+        . '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
+}
+if (empty($group_configured)) {
+    echo '<div class="alert alert-warning d-flex align-items-center" role="alert">'
+        . '<i class="bi bi-exclamation-triangle-fill me-3 fs-5"></i>'
+        . '<div class="flex-grow-1"><p class="m-0">Set an import package group in <strong>Settings</strong> '
+        . 'before importing products.</p></div></div>';
+}
+if (!empty($fetch_error)) {
+    echo '<div class="alert alert-danger d-flex align-items-center" role="alert">'
+        . '<i class="bi bi-x-circle-fill me-3 fs-5"></i>'
+        . '<div class="flex-grow-1"><p class="m-0">Catalog could not be loaded: '
+        . $this->Html->safe($fetch_error) . '</p></div></div>';
+}
+
+$hasFormatter = class_exists('ReliablesiteProductFormatter');
+$sel = function ($a, $b) {
+    return ((string) $a === (string) $b) ? ' selected' : '';
+};
+
+$has_filter = ($filters['search'] !== '' || $filters['in_stock'] !== '' || $filters['location'] !== ''
+    || $filters['profile'] !== '' || $filters['imported'] !== '');
+
+// Page-level actions, rendered in the card header.
+// Note: Widget::buildLinkButtons() dereferences attributes['href'] unguarded,
+// so every entry must supply one.
+$link_buttons = [
+    [
+        'name' => 'Sync now',
+        'icon' => 'bi bi-arrow-repeat',
+        'attributes' => ['href' => '?scr=catalog&action=syncnow', 'title' => 'Run a catalog sync now'],
+    ],
+    [
+        'name' => 'Import all',
+        'icon' => 'bi bi-download',
+        'attributes' => [
+            'href' => '?scr=catalog&action=importall',
+            'class' => 'rs-confirm rs-confirm-warning',
+            'data-confirm-title' => 'Import all products',
+            'data-confirm-button' => 'Import all',
+            'data-confirm-message' => 'Import every catalog product that is not already imported?',
+        ],
+    ],
+    [
+        'name' => 'Re-format names',
+        'icon' => 'bi bi-fonts',
+        'attributes' => [
+            'href' => '?scr=catalog&action=reformat',
+            'class' => 'rs-confirm rs-confirm-warning',
+            'data-confirm-title' => 'Re-format names',
+            'data-confirm-button' => 'Re-format',
+            'data-confirm-message' => 'Rewrite names and descriptions of all imported, non-frozen products?',
+        ],
+    ],
+    [
+        'name' => 'Refresh',
+        'icon' => 'bi bi-arrow-clockwise',
+        'attributes' => ['href' => '?scr=catalog&refresh=1', 'title' => 'Re-fetch the catalog feed'],
+    ],
+];
+
+ob_start();
 ?>
-<div class="inner">
-    <div class="mb-2">
-        <a class="btn btn-primary btn-sm" href="?scr=catalog&amp;action=syncnow">Sync now</a>
-        <a class="btn btn-outline-secondary btn-sm rs-confirm rs-confirm-warning" href="?scr=catalog&amp;action=importall" data-confirm-title="Import all products" data-confirm-button="Import all" data-confirm-message="Import every catalog product that is not already imported?">Import all</a>
-        <a class="btn btn-outline-secondary btn-sm rs-confirm rs-confirm-warning" href="?scr=catalog&amp;action=reformat" data-confirm-title="Re-format names" data-confirm-button="Re-format" data-confirm-message="Rewrite names and descriptions of all imported, non-frozen products?">Re-format names</a>
-        <a class="btn btn-outline-secondary btn-sm" href="?scr=catalog&amp;refresh=1">Refresh catalog</a>
+<div class="card-body border-top filter-section-body"<?php echo $has_filter ? '' : ' style="display: none;"'; ?>>
+<form method="get" class="p-3 border rounded">
+    <input type="hidden" name="scr" value="catalog" />
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label for="rs_cat_search" class="form-label">Search</label>
+            <input type="text" name="search" id="rs_cat_search" class="form-control"
+                value="<?php echo $this->Html->safe($filters['search']); ?>"
+                placeholder="Name, SKU, CPU or location" />
+        </div>
+        <div class="col-md-2">
+            <label for="rs_cat_stock" class="form-label">Stock</label>
+            <select name="in_stock" id="rs_cat_stock" class="form-select">
+                <option value=""<?php echo $sel($filters['in_stock'], ''); ?>>All stock</option>
+                <option value="1"<?php echo $sel($filters['in_stock'], '1'); ?>>In stock only</option>
+                <option value="0"<?php echo $sel($filters['in_stock'], '0'); ?>>Out of stock only</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label for="rs_cat_location" class="form-label">Location</label>
+            <select name="location" id="rs_cat_location" class="form-select">
+                <option value="">All locations</option>
+                <?php foreach ($locations as $loc) { ?>
+                    <option value="<?php echo $this->Html->safe($loc); ?>"<?php echo $sel($filters['location'], $loc); ?>>
+                        <?php echo $this->Html->safe($loc); ?>
+                    </option>
+                <?php } ?>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label for="rs_cat_profile" class="form-label">Profile</label>
+            <select name="profile" id="rs_cat_profile" class="form-select">
+                <option value=""<?php echo $sel($filters['profile'], ''); ?>>All profiles</option>
+                <option value="standard"<?php echo $sel($filters['profile'], 'standard'); ?>>Standard</option>
+                <option value="efi"<?php echo $sel($filters['profile'], 'efi'); ?>>EFI / NVMe</option>
+                <option value="storage"<?php echo $sel($filters['profile'], 'storage'); ?>>Storage</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label for="rs_cat_imported" class="form-label">Imported</label>
+            <select name="imported" id="rs_cat_imported" class="form-select">
+                <option value=""<?php echo $sel($filters['imported'], ''); ?>>All</option>
+                <option value="1"<?php echo $sel($filters['imported'], '1'); ?>>Imported</option>
+                <option value="0"<?php echo $sel($filters['imported'], '0'); ?>>Not imported</option>
+            </select>
+        </div>
     </div>
-    <?php
-    if (!empty($notice)) {
-        echo '<div class="alert alert-success">' . $this->Html->safe($notice) . '</div>';
-    }
-    if (!empty($error)) {
-        echo '<div class="alert alert-danger">' . $this->Html->safe($error) . '</div>';
-    }
-    if (empty($group_configured)) {
-        echo '<div class="alert alert-warning">Set an import package group in <strong>Settings</strong> before importing products.</div>';
-    }
-    if (!empty($fetch_error)) {
-        echo '<div class="alert alert-danger">Catalog could not be loaded: ' . $this->Html->safe($fetch_error) . '</div>';
-    }
-    $hasFormatter = class_exists('ReliablesiteProductFormatter');
-    $sel = function ($a, $b) {
-        return ((string) $a === (string) $b) ? ' selected' : '';
-    };
-    ?>
-    <form method="get" class="rs-filter">
-        <input type="hidden" name="scr" value="catalog" />
-        <input type="text" name="search" value="<?php echo $this->Html->safe($filters['search']); ?>" class="form-control d-inline-block" placeholder="Search name, SKU, CPU, location" style="width:240px" />
-        <select name="in_stock" class="form-select d-inline-block w-auto">
-            <option value=""<?php echo $sel($filters['in_stock'], ''); ?>>All stock</option>
-            <option value="1"<?php echo $sel($filters['in_stock'], '1'); ?>>In stock only</option>
-            <option value="0"<?php echo $sel($filters['in_stock'], '0'); ?>>Out of stock only</option>
-        </select>
-        <select name="location" class="form-select d-inline-block w-auto">
-            <option value="">All locations</option>
-            <?php foreach ($locations as $loc) { ?>
-                <option value="<?php echo $this->Html->safe($loc); ?>"<?php echo $sel($filters['location'], $loc); ?>><?php echo $this->Html->safe($loc); ?></option>
-            <?php } ?>
-        </select>
-        <select name="profile" class="form-select d-inline-block w-auto">
-            <option value=""<?php echo $sel($filters['profile'], ''); ?>>All profiles</option>
-            <option value="standard"<?php echo $sel($filters['profile'], 'standard'); ?>>Standard</option>
-            <option value="efi"<?php echo $sel($filters['profile'], 'efi'); ?>>EFI / NVMe</option>
-            <option value="storage"<?php echo $sel($filters['profile'], 'storage'); ?>>Storage</option>
-        </select>
-        <select name="imported" class="form-select d-inline-block w-auto">
-            <option value=""<?php echo $sel($filters['imported'], ''); ?>>All</option>
-            <option value="1"<?php echo $sel($filters['imported'], '1'); ?>>Imported</option>
-            <option value="0"<?php echo $sel($filters['imported'], '0'); ?>>Not imported</option>
-        </select>
-        <button type="submit" class="btn btn-outline-secondary btn-sm">Filter</button>
-        <a class="btn btn-outline-secondary btn-sm" href="?scr=catalog">Clear</a>
-        <span class="rs-count">Showing <strong><?php echo (int) $shown_count; ?></strong> of <?php echo (int) $total_count; ?></span>
-    </form>
-    <table class="table">
-        <thead>
-        <tr>
-            <th>SKU</th>
-            <th>Product</th>
-            <th>CPU</th>
-            <th>Profile</th>
-            <th>Location</th>
-            <th>Stock</th>
-            <th>Monthly (base)</th>
-            <th>Imported</th>
-            <th>Actions</th>
-        </tr>
-        </thead>
-        <?php
-        foreach ($products as $row) {
-            $invId = $row['_inv_id'];
-            $name = $hasFormatter ? ReliablesiteProductFormatter::formatName($row) : (isset($row['description']) ? $row['description'] : $invId);
-            $cpu = isset($row['cpu']['raw_string']) ? $row['cpu']['raw_string']
-                : trim((isset($row['cpu']['brand']) ? $row['cpu']['brand'] : '') . ' ' . (isset($row['cpu']['model']) ? $row['cpu']['model'] : ''));
-            $stock = (int) $row['_stock'];
-            ?>
-            <tr>
-                <td><?php echo $this->Html->safe($invId); ?></td>
-                <td><?php echo $this->Html->safe($name); ?></td>
-                <td><?php echo $this->Html->safe($cpu !== '' ? $cpu : '-'); ?></td>
-                <td><span class="badge text-bg-secondary"><?php echo $this->Html->safe($row['_profile']); ?></span></td>
-                <td><?php echo $this->Html->safe(isset($row['data_center']) ? $row['data_center'] : '-'); ?></td>
-                <td>
-                    <span class="badge <?php echo ($stock > 0 ? 'text-bg-success' : 'text-bg-secondary'); ?>"><?php echo $stock; ?></span>
-                </td>
-                <td><?php echo $row['_base_price'] > 0 ? ('$' . number_format($row['_base_price'], 2)) : '-'; ?></td>
-                <td>
-                    <?php
-                    if ($row['_frozen']) {
-                        echo '<span class="badge text-bg-warning">Imported (frozen)</span>';
-                    } elseif ($row['_imported']) {
-                        echo '<span class="badge text-bg-success">Imported</span>';
-                    } else {
-                        echo '<span class="badge text-bg-secondary">No</span>';
-                    }
-                    ?>
-                </td>
-                <td>
-                    <?php
-                    if (!$row['_imported']) {
-                        if (empty($group_configured)) {
-                            echo '<span class="btn btn-primary btn-sm disabled">Import</span>';
-                        } else {
-                            echo '<a class="btn btn-primary btn-sm" href="?scr=catalog&amp;action=import&amp;inventory_id=' . urlencode($invId) . '">Import</a>';
-                        }
-                    } else {
-                        $pid = urlencode($row['_package_id']);
-                        if ($row['_frozen']) {
-                            echo '<a class="btn btn-outline-secondary btn-sm" href="?scr=catalog&amp;action=freeze&amp;package_id=' . $pid . '&amp;frozen=0">Resume sync</a> ';
-                        } else {
-                            echo '<a class="btn btn-outline-secondary btn-sm" href="?scr=catalog&amp;action=freeze&amp;package_id=' . $pid . '&amp;frozen=1">Freeze</a> ';
-                        }
-                        echo '<a class="btn btn-outline-secondary btn-sm rs-confirm" href="?scr=catalog&amp;action=untrack&amp;package_id=' . $pid . '" data-confirm-title="Untrack product" data-confirm-button="Untrack" data-confirm-message="Stop tracking this product?">Untrack</a>';
-                    }
-                    ?>
-                </td>
-            </tr>
-            <?php
-        }
-        if (empty($products)) {
-            echo '<tr><td colspan="9"><div class="text-center text-muted py-5"><i class="bi bi-box-seam" style="font-size:3rem;opacity:.3"></i><p class="mt-3 mb-0">No catalog products match the current filters.</p></div></td></tr>';
-        }
-        ?>
-    </table>
+    <div class="d-flex gap-2 justify-content-end mt-3">
+        <a href="?scr=catalog" class="btn btn-secondary">Clear</a>
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </div>
+</form>
 </div>
+<?php
+$filter_html = ob_get_clean();
+
+$this->Widget->clear();
+$this->Widget->setLinkButtons($link_buttons);
+$this->Widget->setFilterHtml($filter_html, $has_filter);
+$this->Widget->setBodyWrapper(false);
+$this->Widget->create($this->_('Reliablesite.catalog.box_title', true), ['id' => 'rs_catalog']);
+
+if (empty($products)) {
+?>
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-box-seam" style="font-size:3rem;opacity:.3"></i>
+        <p class="mt-3 mb-0">No catalog products match the current filters.</p>
+    </div>
+<?php
+} else {
+?>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>SKU</th>
+                    <th>Product</th>
+                    <th>CPU</th>
+                    <th>Profile</th>
+                    <th>Location</th>
+                    <th>Stock</th>
+                    <th>Monthly (base)</th>
+                    <th>Imported</th>
+                    <th class="text-end">Options</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php
+            foreach ($products as $row) {
+                $invId = $row['_inv_id'];
+                $name = $hasFormatter
+                    ? ReliablesiteProductFormatter::formatName($row)
+                    : ($row['description'] ?? $invId);
+                $cpu = $row['cpu']['raw_string']
+                    ?? trim(($row['cpu']['brand'] ?? '') . ' ' . ($row['cpu']['model'] ?? ''));
+                $stock = (int) $row['_stock'];
+            ?>
+                <tr>
+                    <td class="rs-mono"><?php echo $this->Html->safe($invId); ?></td>
+                    <td><?php echo $this->Html->safe($name); ?></td>
+                    <td><?php echo $this->Html->safe($cpu !== '' ? $cpu : '-'); ?></td>
+                    <td><span class="badge text-bg-secondary"><?php echo $this->Html->safe($row['_profile']); ?></span></td>
+                    <td><?php echo $this->Html->safe($row['data_center'] ?? '-'); ?></td>
+                    <td>
+                        <span class="badge <?php echo ($stock > 0 ? 'text-bg-success' : 'text-bg-secondary'); ?>">
+                            <?php echo $stock; ?>
+                        </span>
+                    </td>
+                    <td><?php echo $row['_base_price'] > 0 ? ('$' . number_format($row['_base_price'], 2)) : '-'; ?></td>
+                    <td>
+                        <?php
+                        if ($row['_frozen']) {
+                            echo '<span class="badge text-bg-warning">Frozen</span>';
+                        } elseif ($row['_imported']) {
+                            echo '<span class="badge text-bg-success">Imported</span>';
+                        } else {
+                            echo '<span class="badge text-bg-secondary">No</span>';
+                        }
+                        ?>
+                    </td>
+                    <td class="text-end">
+                        <div class="rs-actions justify-content-end">
+                        <?php
+                        if (!$row['_imported']) {
+                            if (empty($group_configured)) {
+                                echo '<span class="btn btn-sm btn-primary disabled" '
+                                    . 'title="Set an import package group in Settings first">Import</span>';
+                            } else {
+                                echo '<a class="btn btn-sm btn-primary" '
+                                    . 'href="?scr=catalog&amp;action=import&amp;inventory_id=' . urlencode($invId) . '">'
+                                    . 'Import</a>';
+                            }
+                        } else {
+                            $pid = urlencode($row['_package_id']);
+                            if ($row['_frozen']) {
+                                echo '<a class="btn btn-sm btn-outline-secondary" title="Resume syncing this product" '
+                                    . 'href="?scr=catalog&amp;action=freeze&amp;package_id=' . $pid . '&amp;frozen=0">'
+                                    . '<i class="bi bi-play"></i></a>';
+                            } else {
+                                echo '<a class="btn btn-sm btn-outline-secondary" title="Freeze this product" '
+                                    . 'href="?scr=catalog&amp;action=freeze&amp;package_id=' . $pid . '&amp;frozen=1">'
+                                    . '<i class="bi bi-pause"></i></a>';
+                            }
+                            echo '<a class="btn btn-sm btn-outline-danger rs-confirm" '
+                                . 'href="?scr=catalog&amp;action=untrack&amp;package_id=' . $pid . '" '
+                                . 'title="Stop tracking" '
+                                . 'data-confirm-title="Untrack product" '
+                                . 'data-confirm-button="Untrack" '
+                                . 'data-confirm-message="Stop tracking this product?">'
+                                . '<i class="bi bi-x-lg"></i></a>';
+                        }
+                        ?>
+                        </div>
+                    </td>
+                </tr>
+            <?php
+            }
+            ?>
+            </tbody>
+        </table>
+    </div>
+<?php
+}
+
+$this->Widget->footer();
+?>
+<span class="text-muted small">
+    Showing <strong><?php echo (int) $shown_count; ?></strong> of <?php echo (int) $total_count; ?> products
+</span>
 <?php
 $this->Widget->end();

@@ -1,20 +1,22 @@
-<table class="table">
-    <tr>
-        <td><?php $this->_('Reliablesite.service_field.server_label'); ?></td>
-        <td>
-            <?php
-            if (!empty($pending)) {
-                echo '<span class="badge badge-warning">Awaiting assignment</span>';
-            } else {
-                echo $this->Html->safe(isset($service_fields->reliablesite_server_label) ? $service_fields->reliablesite_server_label : '');
-            }
-            ?>
-        </td>
-    </tr>
-    <?php if (!empty($server['status'])) { ?>
-    <tr>
-        <td>Status</td>
-        <td><?php echo $this->Html->safe($server['status']); ?></td>
-    </tr>
-    <?php } ?>
-</table>
+<div class="table-responsive">
+    <table class="table">
+        <tr>
+            <td><?php $this->_('Reliablesite.service_field.server_label'); ?></td>
+            <td>
+                <?php
+                if (!empty($pending)) {
+                    echo '<span class="badge badge-warning">Awaiting assignment</span>';
+                } else {
+                    echo $this->Html->safe(isset($service_fields->reliablesite_server_label) ? $service_fields->reliablesite_server_label : '');
+                }
+                ?>
+            </td>
+        </tr>
+        <?php if (!empty($server['status'])) { ?>
+        <tr>
+            <td>Status</td>
+            <td><?php echo $this->Html->safe($server['status']); ?></td>
+        </tr>
+        <?php } ?>
+    </table>
+</div>

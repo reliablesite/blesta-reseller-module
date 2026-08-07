@@ -37,7 +37,10 @@ if (!empty($error)) {
                 <?php $this->Form->create(); ?>
                 <input type="hidden" name="action" value="set_backup" />
                 <input type="hidden" name="ftp_account_id" value="<?php echo $this->Html->safe($ftpId); ?>" />
-                <label class="inline"><input type="checkbox" name="enable" value="1" <?php echo $enabled ? 'checked' : ''; ?> /> Enabled</label>
+                <div class="form-check">
+                    <input type="checkbox" name="enable" value="1" class="form-check-input" id="rs_backup_enable"<?php echo $enabled ? ' checked' : ''; ?> />
+                    <label class="form-check-label" for="rs_backup_enable">Enabled</label>
+                </div>
                 <input type="password" name="password" class="form-control" placeholder="New FTP password" style="width:220px;display:inline-block;" />
                 <button type="submit" class="btn btn-primary btn-sm">Save</button>
                 <?php $this->Form->end(); ?>

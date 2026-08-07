@@ -1,81 +1,154 @@
 <?php
-$this->Widget->clear();
-$this->Widget->create($this->_('Reliablesite.servers.box_title', true));
+foreach ((array) $errors as $e) {
+    echo '<div class="alert alert-danger">' . $this->Html->safe(is_scalar($e) ? $e : json_encode($e)) . '</div>';
+}
+
+$has_filter = ($search !== '' || $unassigned === 'true');
+
+// Search panel, revealed by the funnel button Widget adds to the card header.
+// Widget::setFilterHtml() passes this through verbatim (it only builds the
+// .filter-section-body wrapper for InputFields-driven filters), so we supply
+// the wrapper ourselves - that is the element Paradigm's toggle script slides.
+ob_start();
 ?>
-<div class="inner">
-    <div class="mb-2">
-        <span>Pending orders awaiting assignment: <strong><?php echo (int) $pending_count; ?></strong></span>
+<div class="card-body border-top filter-section-body"<?php echo $has_filter ? '' : ' style="display: none;"'; ?>>
+<form method="get" class="p-3 border rounded">
+    <input type="hidden" name="scr" value="servers" />
+    <div class="row g-3 align-items-end">
+        <div class="col-md-6">
+            <label for="rs_servers_search" class="form-label">Search</label>
+            <input type="text" name="search" id="rs_servers_search" class="form-control"
+                value="<?php echo $this->Html->safe($search); ?>" placeholder="Server ID or label" />
+        </div>
+        <div class="col-md-6">
+            <div class="form-check">
+                <input type="checkbox" name="unassigned" value="1" id="rs_servers_unassigned"
+                    class="form-check-input"<?php echo ($unassigned === 'true' ? ' checked' : ''); ?> />
+                <label for="rs_servers_unassigned" class="form-check-label">Unassigned servers only</label>
+            </div>
+        </div>
     </div>
-    <?php
-    foreach ((array) $errors as $e) {
-        echo '<div class="alert alert-danger">' . $this->Html->safe(is_scalar($e) ? $e : json_encode($e)) . '</div>';
-    }
-    ?>
-    <form method="get" class="mb-2">
-        <input type="hidden" name="scr" value="servers" />
-        <input type="text" name="search" value="<?php echo $this->Html->safe($search); ?>" class="form-control d-inline-block" placeholder="Search server id / name" style="width:220px" />
-        <label class="inline"><input type="checkbox" name="unassigned" value="1" <?php echo ($unassigned === 'true' ? 'checked' : ''); ?> /> Unassigned only</label>
-        <button type="submit" class="btn btn-outline-secondary btn-sm">Search</button>
-    </form>
-    <table class="table">
-        <thead>
-        <tr>
-            <th>Server ID</th>
-            <th>Label</th>
-            <th>Status</th>
-            <th>Assigned To</th>
-            <th></th>
-        </tr>
-        </thead>
-        <?php
-        foreach ($servers as $srv) {
-            $sid = isset($srv['serverId']) ? $srv['serverId'] : (isset($srv['id']) ? $srv['id'] : '');
-            $status = isset($srv['status']) ? $srv['status'] : '';
-            $statusCls = 'text-bg-secondary';
-            switch (strtolower($status)) {
-                case 'active':
-                    $statusCls = 'text-bg-success';
-                    break;
-                case 'suspended':
-                    $statusCls = 'text-bg-warning';
-                    break;
-                case 'cancelled':
-                case 'terminated':
-                    $statusCls = 'text-bg-danger';
-                    break;
-            }
-            $link = isset($assigned[(string) $sid]) ? $assigned[(string) $sid] : null;
-            ?>
-            <tr>
-                <td>#<?php echo $this->Html->safe($sid); ?></td>
-                <td><?php echo $this->Html->safe(isset($srv['serverLabel']) ? $srv['serverLabel'] : (isset($srv['label']) ? $srv['label'] : '')); ?></td>
-                <td><?php echo $status !== '' ? '<span class="badge ' . $statusCls . '">' . $this->Html->safe($status) . '</span>' : '-'; ?></td>
-                <td>
-                    <?php
-                    if ($link) {
-                        echo '<a href="' . $this->Html->safe($client_base . $link['client_id'] . '/') . '">'
-                            . $this->Html->safe($link['name']) . '</a> '
-                            . '<small class="text-muted">(service #' . $this->Html->safe($link['service_id']) . ')</small>';
-                    } else {
-                        echo '<span class="badge text-bg-success">Unassigned</span>';
-                    }
-                    ?>
-                </td>
-                <td><a class="btn btn-outline-secondary btn-sm" href="<?php echo $this->Html->safe($manage_base . '/?scr=manageserver&rsid=' . urlencode($sid)); ?>">Manage</a></td>
-            </tr>
-            <?php
-        }
-        if (empty($servers)) {
-            echo '<tr><td colspan="5"><div class="text-center text-muted py-5"><i class="bi bi-hdd-rack" style="font-size:3rem;opacity:.3"></i><p class="mt-3 mb-0">No servers found.</p></div></td></tr>';
-        }
-        ?>
-    </table>
-    <div class="pagination_row">
-        <?php if ($page > 1) { ?>
-            <a class="btn btn-outline-secondary btn-sm" href="?scr=servers&amp;search=<?php echo urlencode($search); ?>&amp;unassigned=<?php echo ($unassigned === 'true' ? '1' : '0'); ?>&amp;page=<?php echo $page - 1; ?>">&laquo; Prev</a>
-        <?php } ?>
-        <a class="btn btn-outline-secondary btn-sm" href="?scr=servers&amp;search=<?php echo urlencode($search); ?>&amp;unassigned=<?php echo ($unassigned === 'true' ? '1' : '0'); ?>&amp;page=<?php echo $page + 1; ?>">Next &raquo;</a>
+    <div class="d-flex gap-2 justify-content-end mt-3">
+        <a href="?scr=servers" class="btn btn-secondary">Clear</a>
+        <button type="submit" class="btn btn-primary">Search</button>
     </div>
+</form>
 </div>
+<?php
+$filter_html = ob_get_clean();
+
+$this->Widget->clear();
+$this->Widget->setFilterHtml($filter_html, $has_filter);
+$this->Widget->setBodyWrapper(false);
+$this->Widget->create($this->_('Reliablesite.servers.box_title', true), ['id' => 'rs_servers']);
+
+if ((int) $pending_count > 0) {
+?>
+    <div class="card-body border-bottom py-2 small text-muted">
+        <i class="bi bi-hourglass-split me-1"></i>
+        <strong><?php echo (int) $pending_count; ?></strong>
+        pending order<?php echo ((int) $pending_count === 1 ? '' : 's'); ?> awaiting assignment
+    </div>
+<?php
+}
+
+if (empty($servers)) {
+?>
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-hdd-rack" style="font-size:3rem;opacity:.3"></i>
+        <p class="mt-3 mb-0">No servers found.</p>
+    </div>
+<?php
+} else {
+?>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Server ID</th>
+                    <th>Label</th>
+                    <th>Status</th>
+                    <th>Assigned To</th>
+                    <th class="text-end">Options</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php
+            foreach ($servers as $srv) {
+                $sid = $srv['serverId'] ?? ($srv['id'] ?? '');
+                $status = $srv['status'] ?? '';
+                $statusCls = 'text-bg-secondary';
+                switch (strtolower($status)) {
+                    case 'active':
+                        $statusCls = 'text-bg-success';
+                        break;
+                    case 'suspended':
+                        $statusCls = 'text-bg-warning';
+                        break;
+                    case 'cancelled':
+                    case 'terminated':
+                        $statusCls = 'text-bg-danger';
+                        break;
+                }
+                $link = $assigned[(string) $sid] ?? null;
+            ?>
+                <tr>
+                    <td>#<?php echo $this->Html->safe($sid); ?></td>
+                    <td><?php echo $this->Html->safe($srv['serverLabel'] ?? ($srv['label'] ?? '')); ?></td>
+                    <td>
+                        <?php
+                        echo $status !== ''
+                            ? '<span class="badge ' . $statusCls . '">' . $this->Html->safe($status) . '</span>'
+                            : '<span class="text-muted">-</span>';
+                        ?>
+                    </td>
+                    <td>
+                        <?php
+                        if ($link) {
+                            echo '<a href="' . $this->Html->safe($client_base . $link['client_id'] . '/') . '">'
+                                . $this->Html->safe($link['name']) . '</a> '
+                                . '<small class="text-muted">(service #' . $this->Html->safe($link['service_id']) . ')</small>';
+                        } else {
+                            echo '<span class="badge text-bg-info">Unassigned</span>';
+                        }
+                        ?>
+                    </td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-secondary"
+                            href="<?php echo $this->Html->safe($manage_base . '/?scr=manageserver&rsid=' . urlencode($sid)); ?>"
+                            title="Manage server">
+                            <i class="bi bi-gear"></i>
+                        </a>
+                    </td>
+                </tr>
+            <?php
+            }
+            ?>
+            </tbody>
+        </table>
+    </div>
+<?php
+}
+
+$base = '?scr=servers&amp;search=' . urlencode($search)
+    . '&amp;unassigned=' . ($unassigned === 'true' ? '1' : '0') . '&amp;page=';
+
+$this->Widget->footer();
+?>
+<nav aria-label="Server pages">
+    <ul class="pagination pagination-sm mb-0 justify-content-end">
+        <li class="page-item<?php echo ($page > 1 ? '' : ' disabled'); ?>">
+            <a class="page-link" href="<?php echo ($page > 1 ? $base . ($page - 1) : '#'); ?>">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+        </li>
+        <li class="page-item disabled"><span class="page-link">Page <?php echo (int) $page; ?></span></li>
+        <li class="page-item<?php echo (empty($servers) ? ' disabled' : ''); ?>">
+            <a class="page-link" href="<?php echo (empty($servers) ? '#' : $base . ($page + 1)); ?>">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>
+    </ul>
+</nav>
 <?php
 $this->Widget->end();

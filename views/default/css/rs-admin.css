@@ -48,76 +48,6 @@
 }
 
 /* ------------------------------------------------------------------ *
- * Overview stat tiles (manage.pdt)
- * ------------------------------------------------------------------ */
-.rs-admin .rs-stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.rs-admin .rs-stat {
-    flex: 1 1 170px;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 1.25rem;
-    text-align: center;
-    transition: border-color .15s ease, transform .15s ease;
-}
-
-.rs-admin a:hover .rs-stat {
-    border-color: var(--accent-color);
-    transform: translateY(-1px);
-}
-
-.rs-admin .rs-stat-num {
-    font-size: 1.75rem;
-    font-weight: 700;
-    line-height: 1.1;
-    color: var(--accent-color);
-}
-
-/* Replaces style="color:#d97706" on the pending-orders count */
-.rs-admin .rs-stat-num.is-warning {
-    color: var(--warning-color);
-}
-
-/* Replaces style="font-size:18px;color:#374151" on the last-sync timestamp */
-.rs-admin .rs-stat-num.is-text {
-    font-size: 1.05rem;
-    margin-top: .35rem;
-    color: var(--text-primary);
-}
-
-.rs-admin .rs-stat-label {
-    margin-top: .4rem;
-    font-size: .875rem;
-    color: var(--text-muted);
-}
-
-/* ------------------------------------------------------------------ *
- * Filter / toolbar row
- * ------------------------------------------------------------------ */
-.rs-admin .rs-filter {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .5rem;
-    align-items: center;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: .75rem;
-    margin-bottom: 1rem;
-}
-
-/* Replaces style="color:#666;margin-left:auto" in catalog.pdt */
-.rs-admin .rs-filter .rs-count {
-    margin-left: auto;
-    color: var(--text-muted);
-}
-
-/* ------------------------------------------------------------------ *
  * Shared primitives
  * ------------------------------------------------------------------ */
 .rs-admin .rs-actions {
@@ -155,21 +85,22 @@
     font-family: monospace;
 }
 
-/* ------------------------------------------------------------------ *
- * Legacy Blesta classes Paradigm does not cover inside a .card
- *
- * Table headers used to be `<tr class="heading_row"><td>`, which Paradigm
- * only styles under `.common_box_content` (application.css:31939) - a
- * wrapper module views do not have, since they render inside
- * .card > .card-content > .card-body. Those are now real `<thead><th>`
- * elements, which Paradigm themes natively, so no shim is needed.
- *
- * `.pagination_row` still has no rule anywhere in the theme.
- * ------------------------------------------------------------------ */
-.rs-admin .pagination_row {
-    display: flex;
-    gap: .5rem;
-    margin-top: 1rem;
+/* Sync log output (sync_log.pdt) */
+.rs-admin .rs-log {
+    padding: .75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: .8125rem;
+    white-space: pre-wrap;
+}
+
+/* A timestamp rather than a number, so it needs to sit smaller than the
+   stat-card-value default without losing the tile's vertical rhythm. */
+.rs-admin .stat-card-value.rs-stat-value-sm {
+    font-size: 1.05rem;
+    line-height: 1.6;
 }
 
 /* ------------------------------------------------------------------ *
@@ -201,14 +132,15 @@
 /* ------------------------------------------------------------------ *
  * Ask Brian chat (was an inline <style> block, 33 hardcoded colours)
  * ------------------------------------------------------------------ */
+/* The chat fills the card body edge to edge (the view calls
+   setBodyWrapper(false)), so it carries no border or radius of its own -
+   otherwise it reads as a card nested inside a card. */
 .rs-admin .rs-brian {
     display: flex;
     flex-direction: column;
     height: 560px;
     max-height: 70vh;
     background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
     overflow: hidden;
 }
 
