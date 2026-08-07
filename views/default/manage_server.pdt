@@ -55,10 +55,9 @@ foreach ($pages as $key => $meta) {
     ];
 }
 
-// This screen is a drill-down from Provisioning > Servers, so it shows the
-// server's own tabs rather than $section_tabs - stacking both would put three
-// levels of navigation on one card. The section strip above still marks
-// Provisioning active, and "Back to servers" is the way up.
+// These tabs are this server's own sub-pages, not module navigation - the
+// module bar above stays a single row and marks Provisioning > Servers as
+// current. "Back to servers" is the way up.
 $this->Widget->clear();
 $this->Widget->setLinkButtons($link_buttons);
 $this->Widget->setTabs($tabs);

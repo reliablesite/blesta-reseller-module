@@ -38,10 +38,6 @@ ob_start();
 $filter_html = ob_get_clean();
 
 $this->Widget->clear();
-if (!empty($section_tabs)) {
-    $this->Widget->setTabs($section_tabs);
-    $this->Widget->setNavStyle('nav-tabs-custom');
-}
 $this->Widget->setFilterHtml($filter_html, $has_filter);
 $this->Widget->setBodyWrapper(false);
 $this->Widget->create($this->_('Reliablesite.servers.box_title', true), ['id' => 'rs_servers']);

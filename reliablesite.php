@@ -3145,21 +3145,24 @@ class Reliablesite extends Module
     }
 
     /**
-     * Builds the top-level section strip shown above every admin card.
+     * Builds the module's navigation bar.
      *
-     * Uses Paradigm's own .nav-tabs-custom, which supplies the colours, hover
-     * state, active underline and horizontal overflow scrolling for both light
-     * and dark (app/views/admin/paradigm/css/application.css:20485).
+     * One row: single-screen sections are plain links, grouped sections are
+     * Bootstrap 5 dropdowns listing their pages. Everything reachable is one
+     * click away and the bar never needs a second level.
      *
-     * Deliberately not routed through Widget::setTabs(): that renders into
-     * .card-filter-bar, and this strip sits above a different card on every
-     * screen. Dropdowns are not an option either - .nav-tabs-custom sets
-     * overflow-y: hidden, which would clip an open menu.
+     * Note this cannot use Paradigm's .nav-tabs-custom, which is what the
+     * strip looked like before: that class sets overflow-y: hidden
+     * (application.css:20485) to drive its horizontal scrolling, and an open
+     * dropdown would be clipped by it. The look is reproduced in rs-admin.css
+     * on .rs-nav instead, which wraps rather than scrolls - safe here because
+     * grouping keeps the bar to six items.
      *
      * @param string $section The active section key
+     * @param string $active The active page key within that section
      * @return string HTML
      */
-    private function manageNav($section)
+    private function manageNav($section, $active = '')
     {
         $sections = $this->navSections();
         $pending = $this->pendingBadgeCount();
@@ -3168,20 +3171,48 @@ class Reliablesite extends Module
         $tools = '';
 
         foreach ($sections as $key => $meta) {
-            // Surface the work waiting on the admin at the section level, so it
-            // is visible without opening Provisioning first.
-            $badge = '';
-            if ($key === 'provisioning' && $pending > 0) {
-                $badge = '<span class="badge text-bg-secondary ms-2">' . $pending . '</span>';
-            }
+            $is_active = ($key === $section);
+            $pages = isset($meta['pages']) ? $meta['pages'] : [];
 
-            $item = '<li class="nav-item">'
-                . '<a class="nav-link' . ($key === $section ? ' active' : '') . '"'
-                . ' href="' . htmlspecialchars($this->navUrl($this->sectionLanding($key)), ENT_QUOTES, 'UTF-8') . '">'
-                . '<i class="bi ' . $meta['icon'] . '"></i> '
+            // Work waiting on the admin, surfaced without opening the section.
+            $badge = ($key === 'provisioning' && $pending > 0)
+                ? '<span class="badge text-bg-secondary ms-2">' . $pending . '</span>'
+                : '';
+
+            $label = '<i class="bi ' . $meta['icon'] . '"></i> '
                 . htmlspecialchars($meta['label'], ENT_QUOTES, 'UTF-8')
-                . $badge
-                . '</a></li>';
+                . $badge;
+
+            if (count($pages) < 2) {
+                $item = '<li class="nav-item">'
+                    . '<a class="nav-link' . ($is_active ? ' active' : '') . '"'
+                    . ' href="' . htmlspecialchars($this->navUrl($this->sectionLanding($key)), ENT_QUOTES, 'UTF-8') . '">'
+                    . $label
+                    . '</a></li>';
+            } else {
+                $menu = '';
+                foreach ($pages as $page_key => $page) {
+                    $page_badge = ($page_key === 'pendingorders' && $pending > 0)
+                        ? '<span class="badge text-bg-secondary ms-2">' . $pending . '</span>'
+                        : '';
+
+                    $menu .= '<li><a class="dropdown-item'
+                        . ($is_active && $page_key === $active ? ' active' : '') . '"'
+                        . ' href="' . htmlspecialchars($this->navUrl($page_key), ENT_QUOTES, 'UTF-8') . '">'
+                        . '<i class="bi ' . $page['icon'] . ' me-2"></i>'
+                        . htmlspecialchars($page['label'], ENT_QUOTES, 'UTF-8')
+                        . $page_badge
+                        . '</a></li>';
+                }
+
+                $item = '<li class="nav-item dropdown">'
+                    . '<a class="nav-link dropdown-toggle' . ($is_active ? ' active' : '') . '"'
+                    . ' href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">'
+                    . $label
+                    . '</a>'
+                    . '<ul class="dropdown-menu">' . $menu . '</ul>'
+                    . '</li>';
+            }
 
             if (!empty($meta['tool'])) {
                 $tools .= $item;
@@ -3191,57 +3222,14 @@ class Reliablesite extends Module
         }
 
         return '<div class="rs-nav">'
-            . '<ul class="nav nav-tabs-custom border-0 mb-0" role="tablist">' . $main . '</ul>'
-            . '<ul class="nav nav-tabs-custom border-0 mb-0 rs-nav-tools" role="tablist">' . $tools . '</ul>'
+            . '<ul class="nav" role="tablist">' . $main . '</ul>'
+            . '<ul class="nav rs-nav-tools" role="tablist">' . $tools . '</ul>'
             . '</div>';
-    }
-
-    /**
-     * Builds the second-level tabs for a section, in the shape
-     * Widget::setTabs() expects.
-     *
-     * Returns an empty array for single-screen sections, so the view simply
-     * renders no sub-navigation.
-     *
-     * @param string $section The active section key
-     * @param string $active The active page key within that section
-     * @return array
-     */
-    private function sectionTabs($section, $active)
-    {
-        $sections = $this->navSections();
-        $pages = isset($sections[$section]['pages']) ? $sections[$section]['pages'] : [];
-
-        if (count($pages) < 2) {
-            return [];
-        }
-
-        $tabs = [];
-        foreach ($pages as $key => $meta) {
-            $label = '<i class="bi ' . $meta['icon'] . ' me-1"></i>'
-                . htmlspecialchars($meta['label'], ENT_QUOTES, 'UTF-8');
-
-            if ($key === 'pendingorders' && ($count = $this->pendingBadgeCount()) > 0) {
-                $label .= '<span class="badge text-bg-secondary ms-2">' . $count . '</span>';
-            }
-
-            $tabs[] = [
-                'name' => $label,
-                'current' => ($key === $active),
-                'attributes' => ['href' => $this->navUrl($key)],
-            ];
-        }
-
-        return $tabs;
     }
 
     /**
      * Renders an admin management screen: scoped styles, the section strip and
      * the view, all inside the .rs-module wrapper.
-     *
-     * The view receives $section_tabs, which it passes to Widget::setTabs() to
-     * draw the section's second-level navigation. It is an empty array for
-     * single-screen sections, so those views render no sub-navigation.
      *
      * @param string $view View name
      * @param string $section Active section key (see navSections())
@@ -3251,9 +3239,7 @@ class Reliablesite extends Module
      */
     private function renderManageScreen($view, $section, $active, array $data)
     {
-        $data['section_tabs'] = $this->sectionTabs($section, $active);
-
-        return $this->wrap($this->manageNav($section) . $this->renderViewRaw($view, $data));
+        return $this->wrap($this->manageNav($section, $active) . $this->renderViewRaw($view, $data));
     }
 
     /**

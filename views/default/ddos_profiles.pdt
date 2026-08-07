@@ -4,10 +4,6 @@ foreach ((array) $errors as $e) {
 }
 
 $this->Widget->clear();
-if (!empty($section_tabs)) {
-    $this->Widget->setTabs($section_tabs);
-    $this->Widget->setNavStyle('nav-tabs-custom');
-}
 $this->Widget->setBodyWrapper(false);
 $this->Widget->create('DDoS Profiles', ['id' => 'rs_ddos_profiles']);
 

@@ -23,20 +23,25 @@
 }
 
 /* ------------------------------------------------------------------ *
- * Module section strip (top-level navigation)
+ * Module navigation bar
  *
- * Two groups: operational sections on the left, tools (Ask Brian,
- * Settings) pushed to the right so they read as a separate concern.
+ * One row: plain links for single-screen sections, dropdowns for grouped
+ * ones. Operational sections sit left, tools (Ask Brian, Settings) right.
  *
- * The colours, hover state, active underline and horizontal overflow
- * scrolling all come from Paradigm's .nav-tabs-custom
- * (application.css:20485). This only supplies the surrounding chrome.
+ * This deliberately does NOT use Paradigm's .nav-tabs-custom. That class
+ * sets overflow-y: hidden (application.css:20485) to drive its horizontal
+ * scrolling, which would clip an open dropdown. Its appearance - muted
+ * label, accent underline when current - is reproduced below instead, and
+ * the bar wraps rather than scrolls, which is safe because grouping keeps
+ * it to six items. Menu colours come from Paradigm's own .dropdown-menu
+ * and .dropdown-item rules, so both themes are handled.
  * ------------------------------------------------------------------ */
 .rs-admin .rs-nav {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1.5rem;
+    flex-wrap: wrap;
+    gap: .5rem 1.5rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -44,7 +49,13 @@
     margin-bottom: 1.5rem;
 }
 
-/* The tools group keeps its natural width; only the section list scrolls. */
+.rs-admin .rs-nav .nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin: 0;
+}
+
 .rs-admin .rs-nav-tools {
     flex: 0 0 auto;
 }
@@ -53,10 +64,46 @@
     display: inline-flex;
     align-items: center;
     gap: .4rem;
+    padding: .5rem 0;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: .95rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: color .2s ease, border-color .2s ease;
+}
+
+.rs-admin .rs-nav .nav-link:hover {
+    color: var(--text-primary);
+}
+
+.rs-admin .rs-nav .nav-link.active {
+    color: var(--text-primary);
+    border-bottom-color: var(--accent-color);
 }
 
 .rs-admin .rs-nav .nav-link i {
     font-size: .95em;
+}
+
+/* Bootstrap's caret is a border triangle that ignores font-size; nudge it
+   onto the text baseline so it does not sit high next to the label. */
+.rs-admin .rs-nav .dropdown-toggle::after {
+    margin-left: .1rem;
+    vertical-align: .15em;
+}
+
+.rs-admin .rs-nav .dropdown-item {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+/* The badge is a count, not a label - keep it hard right in the menu. */
+.rs-admin .rs-nav .dropdown-item .badge {
+    margin-left: auto;
 }
 
 /* Below ~576px the two groups stack rather than fighting for width. */
