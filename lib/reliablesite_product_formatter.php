@@ -3,8 +3,9 @@
  * Synthesizes clean product names and rich descriptions from the structured
  * fields the ReliableSite inventory widget returns. The raw "description" field
  * on each inventory row is marketing-flavored and verbose; this class produces
- * scannable replacements built from cpu / ram / storage / data_center /
- * option_profile instead.
+ * scannable replacements built from cpu / ram / storage / data_center and the
+ * profile resolved by {@see ReliablesiteInventoryOptions::getProductProfile()}
+ * instead.
  *
  * Plain-PHP port of the Paymenter module's Support\ProductFormatter so the
  * Blesta catalog import and the per-package sync share one source of truth.
@@ -29,7 +30,7 @@ class ReliablesiteProductFormatter
         $ram = self::formatRam($row);
         $storage = self::formatStorageSummary($row);
         $city = self::cleanCity((string) (isset($row['data_center']) ? $row['data_center'] : ''));
-        $profile = (string) (isset($row['option_profile']) ? $row['option_profile'] : 'standard');
+        $profile = ReliablesiteInventoryOptions::getProductProfile($row);
         $isBuildToOrder = trim((string) (isset($row['ram']['capacity']) ? $row['ram']['capacity'] : '')) === '';
 
         if ($profile === 'storage' && $storage !== '') {
@@ -81,7 +82,7 @@ class ReliablesiteProductFormatter
             $storage = 'Configurable at order time';
         }
         $network = self::formatNetworkSpeed($row);
-        $profile = (string) (isset($row['option_profile']) ? $row['option_profile'] : '');
+        $profile = ReliablesiteInventoryOptions::getProductProfile($row);
         $isBuildToOrder = $ramCap === '';
 
         $items = [

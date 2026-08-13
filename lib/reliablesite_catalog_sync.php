@@ -296,15 +296,23 @@ class ReliablesiteCatalogSync
         // Always refresh stock - the most operationally important field.
         $newStock = $this->rowStock($row);
         $edit = ['qty' => $newStock, 'meta' => ['reliablesite_product_id' => (string) $mapping->rs_inventory_id]];
+        if ((int) $package->qty !== $newStock || $this->packageMeta($package) !== (string) $mapping->rs_inventory_id) {
+            $didChange = true;
+        }
 
         if (!$frozen) {
             // Refresh name + description.
-            $edit['names'] = [['lang' => 'en_us', 'name' => ReliablesiteProductFormatter::formatName($row)]];
+            $name = ReliablesiteProductFormatter::formatName($row);
+            $description = ReliablesiteProductFormatter::formatDescription($row);
+            $edit['names'] = [['lang' => 'en_us', 'name' => $name]];
             $edit['descriptions'] = [[
                 'lang' => 'en_us',
                 'text' => '',
-                'html' => ReliablesiteProductFormatter::formatDescription($row),
+                'html' => $description,
             ]];
+            if ($this->packageName($package) !== $name || $this->packageDescription($package) !== $description) {
+                $didChange = true;
+            }
 
             // Refresh prices on the cycles the package already has.
             $monthlyBase = $this->monthlyBase($row);
@@ -315,16 +323,22 @@ class ReliablesiteCatalogSync
                 $pricing = $this->rebuildExistingPricing($package, $row);
                 if (!empty($pricing)) {
                     $edit['pricing'] = $pricing;
+                    $didChange = true;
                 }
             }
         }
 
-        $this->module->Packages->edit($mapping->package_id, $edit);
-        $errors = $this->module->Packages->errors();
-        if (!empty($errors)) {
-            throw new Exception($this->flattenErrors($errors));
+        // A package the catalog has not moved is left alone. Editing it anyway
+        // rewrites its names, descriptions and pricing rows on every run, which
+        // is what makes a routine sync look like a catalog-wide change - stock
+        // alone rolls the feed hash, so most runs have nothing to apply.
+        if ($didChange) {
+            $this->module->Packages->edit($mapping->package_id, $edit);
+            $errors = $this->module->Packages->errors();
+            if (!empty($errors)) {
+                throw new Exception($this->flattenErrors($errors));
+            }
         }
-        $didChange = true;
 
         $this->module->Record->where('id', '=', $mapping->id)->update('mod_reliablesite_packages', [
             'last_synced_price' => $this->monthlyBase($row),
@@ -460,12 +474,27 @@ class ReliablesiteCatalogSync
             if (!$sync) {
                 return;
             }
-            $membership = $sync->syncPackageMembership();
+            // Reuse the catalog this run already fetched; the assignment lives on
+            // the product rows, so a second fetch could only disagree with it.
+            $catalog = $this->fetchCatalog();
+            $products = !empty($catalog['success']) ? $catalog['products'] : null;
+
+            $membership = $sync->syncPackageMembership($products);
             $this->module->addSyncLog(sprintf(
-                'Options: %d group(s) mapped to packages (%d assignment(s)).',
+                'Options: %d group(s) mapped to packages (%d assignment(s)); %d group(s) changed, '
+                . '%d membership(s) kept for live services.',
                 $membership['groups'],
-                $membership['packages']
+                $membership['packages'],
+                $membership['changed'],
+                $membership['retained']
             ));
+            if ($membership['legacy'] > 0) {
+                $this->module->addSyncLog(sprintf(
+                    'WARNING: %d tracked product(s) carry no option_group_ids in the catalog; their option '
+                    . 'groups fell back to the legacy profile guess.',
+                    $membership['legacy']
+                ));
+            }
         } catch (\Throwable $e) {
             $this->module->recoverRecord();
             $this->module->addSyncLog('Option sync failed: ' . $e->getMessage());
@@ -497,12 +526,15 @@ class ReliablesiteCatalogSync
         $stats = $this->optionSync->syncFromFeed($feed['data']);
         $this->optionsEnsured = true;
         $this->module->addSyncLog(sprintf(
-            'Options: %d group(s) - created %d, updated %d, unchanged %d, failed %d.',
+            'Options: %d group(s) - created %d, updated %d, unchanged %d, failed %d; '
+            . '%d withdrawn option(s) removed, %d kept for existing services.',
             $stats['groups'],
             $stats['created'],
             $stats['updated'],
             $stats['unchanged'],
-            $stats['failed']
+            $stats['failed'],
+            $stats['values_removed'],
+            $stats['values_retained']
         ));
 
         return $this->optionSync;
@@ -584,34 +616,15 @@ class ReliablesiteCatalogSync
     }
 
     /**
-     * Derives a hardware profile for a catalog row (standard / efi / storage).
+     * The hardware profile for a catalog row (standard / efi / storage), as
+     * published by the feed.
      *
      * @param array $row
      * @return string
      */
     public function productProfile(array $row)
     {
-        if (!empty($row['option_profile'])) {
-            return $row['option_profile'];
-        }
-        $storage = (isset($row['storage']) && is_array($row['storage'])) ? $row['storage'] : [];
-        if (empty($storage)) {
-            return 'standard';
-        }
-        foreach ($storage as $disk) {
-            if (strcasecmp(isset($disk['type']) ? $disk['type'] : '', 'NVMe') === 0) {
-                return 'efi';
-            }
-        }
-        $allHdd = true;
-        foreach ($storage as $disk) {
-            if (strcasecmp(isset($disk['type']) ? $disk['type'] : '', 'HDD') !== 0) {
-                $allHdd = false;
-                break;
-            }
-        }
-
-        return $allHdd ? 'storage' : 'standard';
+        return ReliablesiteInventoryOptions::getProductProfile($row);
     }
 
     // -----------------------------------------------------------------
@@ -628,6 +641,53 @@ class ReliablesiteCatalogSync
         }
 
         return null;
+    }
+
+    /**
+     * The package's current en_us name, for change detection.
+     *
+     * @param object $package
+     * @return string
+     */
+    private function packageName($package)
+    {
+        foreach ((array) (isset($package->names) ? $package->names : []) as $name) {
+            if (isset($name->lang) && $name->lang === 'en_us') {
+                return (string) $name->name;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * The package's current en_us HTML description, for change detection.
+     *
+     * @param object $package
+     * @return string
+     */
+    private function packageDescription($package)
+    {
+        foreach ((array) (isset($package->descriptions) ? $package->descriptions : []) as $description) {
+            if (isset($description->lang) && $description->lang === 'en_us') {
+                return (string) $description->html;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * The inventory id currently stored on the package, for change detection.
+     *
+     * @param object $package
+     * @return string
+     */
+    private function packageMeta($package)
+    {
+        return isset($package->meta->reliablesite_product_id)
+            ? (string) $package->meta->reliablesite_product_id
+            : '';
     }
 
     private function rowInventoryId(array $row)

@@ -1,0 +1,32 @@
+########################################################
+# ReliableSite module
+#
+# This directory sits under the webroot and the site's rewrite rule only
+# redirects paths that do NOT resolve to a real file, so every file here is
+# fetchable directly. That is what makes api.php work - and what would
+# otherwise let anyone request the module's class files, which execute and
+# leak absolute paths through PHP's fatal-error output.
+#
+# So: api.php is the only PHP entry point; everything else is denied. View
+# assets (css/js/images) stay public because the admin and client pages load
+# them from the browser. Uses the same 2.2-style syntax as the webroot
+# .htaccess, which this server honours.
+########################################################
+
+# Deny direct access to the module's PHP source
+<FilesMatch "\.php$">
+    order deny,allow
+    deny from all
+</FilesMatch>
+
+# ...except the public JSON endpoints
+<Files "api.php">
+    order allow,deny
+    allow from all
+</Files>
+
+# Deny the module manifest and any documentation shipped alongside it
+<FilesMatch "\.(json|md)$">
+    order deny,allow
+    deny from all
+</FilesMatch>

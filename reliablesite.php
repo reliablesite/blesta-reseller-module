@@ -17,7 +17,7 @@
 class Reliablesite extends Module
 {
     /** @var string Module version */
-    const RS_VERSION = '2.3.0';
+    const RS_VERSION = '2.4.0';
 
     /** @var string AskBrian (Sales Engineer) reseller web-chat endpoint */
     const BRIAN_API_URL = 'https://api-brian.reliablesite.net/api/web-chat-reslr';
@@ -2578,6 +2578,7 @@ class Reliablesite extends Module
 
     private function loadCatalogSync()
     {
+        Loader::load(dirname(__FILE__) . DS . 'lib' . DS . 'reliablesite_inventory_options.php');
         Loader::load(dirname(__FILE__) . DS . 'lib' . DS . 'reliablesite_product_formatter.php');
         Loader::load(dirname(__FILE__) . DS . 'lib' . DS . 'reliablesite_api.php');
         Loader::load(dirname(__FILE__) . DS . 'lib' . DS . 'reliablesite_catalog_sync.php');
