@@ -63,6 +63,28 @@ $lang['Reliablesite.settings.markup_flat'] = 'Flat fee per month';
 $lang['Reliablesite.settings.cycle_monthly'] = 'Monthly only';
 $lang['Reliablesite.settings.cycle_all'] = 'All cycles offered by the inventory item';
 $lang['Reliablesite.settings.payment_method_none'] = '-- None (require selection per order) --';
+$lang['Reliablesite.settings.currency_default'] = '-- Your default currency --';
+
+// Customer-facing white-label assistant (api.php?action=chat)
+$lang['Reliablesite.row_meta.brian_chat_enabled'] = 'Enable the sales assistant endpoint';
+$lang['Reliablesite.row_meta.brian_chat_enabled.note'] = 'Publishes a public chat endpoint your website can post visitor messages to. Off by default; nothing is exposed until you enable it and list your websites.';
+$lang['Reliablesite.row_meta.brian_agent_name'] = 'Assistant name';
+$lang['Reliablesite.row_meta.brian_company_name'] = 'Company name';
+$lang['Reliablesite.row_meta.brian_currency'] = 'Quote prices in';
+$lang['Reliablesite.row_meta.brian_allowed_origins'] = 'Allowed websites';
+$lang['Reliablesite.row_meta.brian_allowed_origins.note'] = 'One site per line, as https://www.example.com or *.example.com for all subdomains. Browser requests from anywhere else are refused. Leave empty and the endpoint will refuse every browser request.';
+$lang['Reliablesite.row_meta.brian_public_base_url'] = 'Public base URL (optional)';
+$lang['Reliablesite.row_meta.brian_public_base_url.note'] = 'Only needed when the address the public uses to reach this install differs from the one Blesta knows - a vanity domain, or a reverse proxy. Must be https://.';
+$lang['Reliablesite.row_meta.brian_behind_proxy'] = 'This install sits behind a proxy or CDN';
+$lang['Reliablesite.row_meta.brian_behind_proxy.note'] = 'Count rate limits against the visitor IP in the Cloudflare or X-Forwarded-For header rather than the connecting address. Turn this on only when a proxy you control sets that header - otherwise a visitor can forge it and send as many messages as they like.';
+$lang['Reliablesite.row_meta.brian_rate_limit'] = 'Messages';
+$lang['Reliablesite.row_meta.brian_rate_window'] = 'Per (seconds)';
+$lang['Reliablesite.row_meta.brian_daily_cap'] = 'Daily cap';
+
+// Ask Brian - white-label status panel
+$lang['Reliablesite.askbrian.wl_title'] = 'Customer-Facing Sales Assistant';
+$lang['Reliablesite.askbrian.wl_enabled'] = 'Enabled';
+$lang['Reliablesite.askbrian.wl_disabled'] = 'Disabled';
 $lang['Reliablesite.settings.save'] = 'Save Settings';
 $lang['Reliablesite.settings.saved'] = 'Settings saved.';
 

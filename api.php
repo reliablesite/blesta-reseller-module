@@ -3,13 +3,14 @@
  * Public JSON endpoints for the external ReliableSite widget and reseller
  * portal.
  *
- * These are the Blesta equivalents of the three public actions the WHMCS module
+ * These are the Blesta equivalents of the public actions the WHMCS module
  * serves from rspanel_clientarea() before its access check:
  *
  *   WHMCS                                   Blesta
  *   index.php?m=rspanel&action=currencies    api.php?action=currencies
  *   index.php?m=rspanel&action=pricing       api.php?action=pricing
  *   index.php?m=rspanel&action=widget&id=..  api.php?action=widget&id=..
+ *   index.php?m=rspanel&action=chat          api.php?action=chat
  *
  * The URLs differ because Blesta has no query-string front controller - it
  * dispatches on the request path only, and modules (unlike plugins) get no
@@ -19,9 +20,15 @@
  * consumers need no changes; see the per-endpoint notes for the two fields
  * Blesta cannot express as integers.
  *
- * Public and unauthenticated, matching WHMCS: the widget is served from other
- * origins, so every response carries permissive CORS headers and only exposes
- * catalog data that is already public on the order form.
+ * The three catalog endpoints are public and unauthenticated, matching WHMCS:
+ * the widget is served from other origins, so every response carries permissive
+ * CORS headers and only exposes catalog data that is already public on the order
+ * form.
+ *
+ * ?action=chat is the exception, and is built differently on purpose. It spends
+ * the reseller's API key and their AI quota on behalf of whoever calls it, so it
+ * is off until an admin enables it, answers only to the websites they list, and
+ * is rate limited per visitor. See chat().
  *
  * @package reliablesite
  */
@@ -48,11 +55,20 @@ class ReliablesiteWidgetApi
         '2|year' => 'biennially',
     ];
 
+    /** @var string Table holding the chat endpoint's rate-limit counters */
+    const RATE_TABLE = 'mod_reliablesite_chat_rate';
+
     /** @var stdClass Host object for Blesta models/components */
     private $host;
 
     /** @var int The resolved company id */
     private $companyId = 0;
+
+    /** @var int The resolved module id, for module-log entries */
+    private $moduleId = 0;
+
+    /** @var ReliablesiteApiLogger|null Memoized module-log writer */
+    private $logger = null;
 
     public function __construct()
     {
@@ -71,6 +87,14 @@ class ReliablesiteWidgetApi
         // The widget action answers with a redirect, so its headers differ.
         if ($action === 'widget') {
             $this->widget();
+
+            return;
+        }
+
+        // The chat action is a POST with an origin-scoped CORS policy, so it
+        // owns its headers too.
+        if ($action === 'chat') {
+            $this->chat();
 
             return;
         }
@@ -401,6 +425,456 @@ class ReliablesiteWidgetApi
         return $monthlyAnyCurrency > 0 ? $monthlyAnyCurrency : $fallback;
     }
 
+    // =================================================================
+    // White-label chat (?action=chat)
+    // =================================================================
+
+    /**
+     * Proxies one chat turn to the white-label Brian endpoint and answers the
+     * caller's website with the reply.
+     *
+     * The reseller's API key stays here. A site embedding this only ever posts
+     * to its own billing host, so the key is never in a page, a bundle, or a
+     * browser request - which is the whole reason this endpoint exists rather
+     * than the site calling Brian directly.
+     *
+     * Unlike the catalog feeds, this one costs money to call, so it is gated
+     * three ways: an explicit enable flag, an admin-listed set of websites, and
+     * per-visitor plus store-wide rate limits.
+     *
+     * Errors are deliberately brand-neutral. The body is written straight into a
+     * chat bubble on the reseller's site, so it must never name ReliableSite or
+     * describe their configuration; the real cause goes to the module log.
+     */
+    private function chat()
+    {
+        Loader::load(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'lib'
+            . DIRECTORY_SEPARATOR . 'reliablesite_brian.php');
+
+        $origin = isset($_SERVER['HTTP_ORIGIN']) ? trim((string) $_SERVER['HTTP_ORIGIN']) : '';
+        $method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper((string) $_SERVER['REQUEST_METHOD']) : 'GET';
+
+        $row = null;
+        try {
+            $this->companyId = $this->resolveCompany();
+            $row = $this->moduleRow();
+        } catch (Throwable $e) {
+            // Fall through: an unconfigured install answers 503 below.
+        }
+
+        $config = ReliablesiteBrian::whiteLabelConfig($row ? $row->meta : null);
+        $apiKey = ($row && isset($row->meta->api_key)) ? (string) $row->meta->api_key : '';
+
+        // A browser only accepts the reply if the origin is echoed back, so the
+        // allow decision has to happen before anything is written.
+        $allowed = ($origin === '')
+            || ($config['enabled'] && ReliablesiteBrian::originAllowed($origin, $config['allowed_origins']));
+
+        header('Vary: Origin');
+        if ($allowed && $origin !== '') {
+            header('Access-Control-Allow-Origin: ' . $origin);
+            header('Access-Control-Allow-Methods: POST, OPTIONS');
+            header('Access-Control-Allow-Headers: Content-Type');
+            header('Access-Control-Max-Age: 86400');
+        }
+        header('Content-Type: application/json');
+        header('Cache-Control: no-store');
+
+        if ($method === 'OPTIONS') {
+            http_response_code($allowed ? 200 : 403);
+
+            return;
+        }
+        if ($method !== 'POST') {
+            $this->chatFail(405, 'This endpoint accepts POST requests only.');
+
+            return;
+        }
+        if (!$config['enabled']) {
+            $this->chatFail(403, 'The assistant is not available right now.');
+
+            return;
+        }
+        if (!$allowed) {
+            $this->chatFail(403, 'This website is not authorised to use the assistant.');
+
+            return;
+        }
+        if ($apiKey === '' || $config['agent_name'] === '' || $config['company_name'] === '') {
+            $this->logChat('config', 'incomplete white-label configuration', false);
+            $this->chatFail(503, 'The assistant is temporarily unavailable.');
+
+            return;
+        }
+
+        $turn = $this->chatInput();
+        if (isset($turn['error'])) {
+            $this->chatFail(400, $turn['error']);
+
+            return;
+        }
+
+        $ip = $this->chatClientIp($config['behind_proxy']);
+        $retryAfter = $this->chatRateLimit($config, $ip);
+        if ($retryAfter > 0) {
+            header('Retry-After: ' . $retryAfter);
+            $this->chatFail(
+                429,
+                'You have sent too many messages. Please wait a moment and try again.',
+                ['retryAfter' => $retryAfter]
+            );
+
+            return;
+        }
+
+        // No session id means a new visitor: mint one carrying an
+        // install-identifying prefix, so conversations group by reseller
+        // upstream without any visitor sharing another's history.
+        if ($turn['sessionId'] === '') {
+            $turn['sessionId'] = ReliablesiteBrian::whiteLabelSessionId(
+                isset($_SERVER['HTTP_HOST']) ? (string) $_SERVER['HTTP_HOST'] : '',
+                $apiKey
+            );
+        }
+
+        $baseUrl = $this->chatBaseUrl($config);
+        $body = ReliablesiteBrian::buildWhiteLabelBody($config, $baseUrl, $this->ownPath(), $turn);
+
+        $brian = new ReliablesiteBrian($apiKey, $this->chatLogger());
+        $result = $brian->sendWhiteLabel($body, $ip);
+
+        if ($result['ok']) {
+            $reply = $result['body'];
+            echo json_encode([
+                'success' => true,
+                'response' => isset($reply['response']) ? $reply['response'] : '',
+                'sessionId' => !empty($reply['sessionId']) ? $reply['sessionId'] : $turn['sessionId'],
+                'assignmentId' => !empty($reply['assignmentId']) ? $reply['assignmentId'] : $turn['assignmentId'],
+            ]);
+
+            return;
+        }
+
+        $this->chatUpstreamFailure($result);
+    }
+
+    /**
+     * Translates an upstream failure into a status the caller can act on.
+     *
+     * @param array $result From ReliablesiteBrian::sendWhiteLabel()
+     */
+    private function chatUpstreamFailure(array $result)
+    {
+        if ($result['timed_out']) {
+            $this->chatFail(504, 'The assistant took too long to reply. Please try again.');
+
+            return;
+        }
+        if ($result['error'] !== '' || $result['status'] === 0) {
+            $this->chatFail(503, 'The assistant is temporarily unavailable.');
+
+            return;
+        }
+        if ($result['status'] === 429) {
+            $retry = 30;
+            if (isset($result['body']['retryAfter'])) {
+                $retry = max(1, (int) $result['body']['retryAfter']);
+            }
+            header('Retry-After: ' . $retry);
+            $this->chatFail(
+                429,
+                'You have sent too many messages. Please wait a moment and try again.',
+                ['retryAfter' => $retry]
+            );
+
+            return;
+        }
+        // 400 here is our own malformed request, and 401/403/404 mean the key is
+        // wrong or the channel is not enabled. All are configuration faults on
+        // this side, so the visitor sees the same neutral "unavailable" and the
+        // detail is left in the module log.
+        if ($result['status'] >= 400 && $result['status'] < 500) {
+            $this->chatFail(503, 'The assistant is temporarily unavailable.');
+
+            return;
+        }
+
+        $this->chatFail(502, 'The assistant could not answer that. Please try again.');
+    }
+
+    /**
+     * Reads and validates one chat turn from the request body.
+     *
+     * JSON is the documented format; a form-encoded body is accepted too because
+     * it avoids a CORS preflight, which matters for sites embedding the widget
+     * on a slow connection.
+     *
+     * @return array The turn, or ['error' => string]
+     */
+    private function chatInput()
+    {
+        $raw = file_get_contents('php://input');
+        $body = json_decode((string) $raw, true);
+        if (!is_array($body)) {
+            $body = $_POST;
+        }
+
+        $read = function ($key) use ($body) {
+            return isset($body[$key]) && is_scalar($body[$key]) ? trim((string) $body[$key]) : '';
+        };
+
+        $message = $read('message');
+        if ($message === '') {
+            return ['error' => 'Please enter a message.'];
+        }
+        $length = function_exists('mb_strlen') ? mb_strlen($message, 'UTF-8') : strlen($message);
+        if ($length > ReliablesiteBrian::MAX_MESSAGE_LENGTH) {
+            return ['error' => 'Message must be ' . ReliablesiteBrian::MAX_MESSAGE_LENGTH
+                . ' characters or fewer.'];
+        }
+
+        $sessionId = $read('sessionId');
+        if ($sessionId !== '' && !ReliablesiteBrian::validId($sessionId)) {
+            return ['error' => 'Invalid session id.'];
+        }
+        $assignmentId = $read('assignmentId');
+        if ($assignmentId !== '' && !ReliablesiteBrian::validId($assignmentId)) {
+            return ['error' => 'Invalid visitor id.'];
+        }
+        $email = $read('email');
+        if ($email !== '' && (strlen($email) > 190 || !filter_var($email, FILTER_VALIDATE_EMAIL))) {
+            return ['error' => 'Please enter a valid email address.'];
+        }
+
+        return [
+            'message' => $message,
+            'sessionId' => $sessionId,
+            'assignmentId' => $assignmentId,
+            'email' => $email,
+        ];
+    }
+
+    /**
+     * The public base URL Brian should read this install's catalog from.
+     *
+     * @param array $config From whiteLabelConfig()
+     * @return string Absolute URL, no trailing slash
+     */
+    private function chatBaseUrl(array $config)
+    {
+        if ($config['base_url'] !== '') {
+            return $config['base_url'];
+        }
+
+        // Brian fetches the catalog over the public internet and rejects plain
+        // http, so the scheme is forced rather than taken from this request -
+        // which may well have arrived over http from behind a TLS proxy.
+        return rtrim(preg_replace('#^http://#i', 'https://', $this->baseUrl()), '/');
+    }
+
+    /**
+     * Whose message this is, for rate-limiting purposes.
+     *
+     * Proxy headers are trusted only when the admin has said this install sits
+     * behind a proxy. Trusting them by default would let any caller mint a fresh
+     * bucket per request by varying a header.
+     *
+     * @param bool $behindProxy
+     * @return string
+     */
+    private function chatClientIp($behindProxy)
+    {
+        if ($behindProxy) {
+            foreach (['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP'] as $header) {
+                if (empty($_SERVER[$header])) {
+                    continue;
+                }
+                $parts = explode(',', (string) $_SERVER[$header]);
+                $ip = trim($parts[0]);
+                if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                    return $ip;
+                }
+            }
+        }
+
+        return isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
+    }
+
+    /**
+     * Applies the per-visitor and (optional) store-wide limits.
+     *
+     * Every bucket is checked before any is charged, so a message refused by the
+     * daily cap is not also counted against the visitor's window.
+     *
+     * @param array $config From whiteLabelConfig()
+     * @param string $ip
+     * @return int Seconds to wait, or 0 when the message is allowed
+     */
+    private function chatRateLimit(array $config, $ip)
+    {
+        $now = time();
+        $buckets = [
+            [
+                'key' => 'ip:' . sha1($this->companyId . '|' . $ip),
+                'limit' => $config['rate_limit'],
+                'window' => $config['rate_window'],
+            ],
+        ];
+        if ($config['daily_cap'] > 0) {
+            $buckets[] = [
+                'key' => 'store:' . $this->companyId,
+                'limit' => $config['daily_cap'],
+                'window' => 86400,
+            ];
+        }
+
+        try {
+            $rows = [];
+            foreach ($buckets as $bucket) {
+                $row = $this->host->Record->select()
+                    ->from(self::RATE_TABLE)
+                    ->where('bucket', '=', $bucket['key'])
+                    ->fetch();
+
+                if ($row && ((int) $row->window_start + $bucket['window']) > $now
+                    && (int) $row->hits >= $bucket['limit']) {
+                    return ((int) $row->window_start + $bucket['window']) - $now;
+                }
+                $rows[$bucket['key']] = $row;
+            }
+
+            foreach ($buckets as $bucket) {
+                $this->chatChargeBucket($bucket, $rows[$bucket['key']], $now);
+            }
+
+            // Buckets are never read again once their window has passed, so
+            // prune occasionally rather than on every message.
+            if (mt_rand(1, 50) === 1) {
+                $this->host->Record->from(self::RATE_TABLE)
+                    ->where('window_start', '<', $now - 172800)
+                    ->delete();
+            }
+        } catch (Throwable $e) {
+            // The counter table is created on install and upgrade. If it is
+            // missing, build it and let this one message through rather than
+            // taking the assistant down.
+            $this->chatEnsureRateTable();
+        }
+
+        return 0;
+    }
+
+    /**
+     * Counts one message against a bucket.
+     *
+     * @param array $bucket
+     * @param stdClass|null $row The bucket's current row, if any
+     * @param int $now
+     */
+    private function chatChargeBucket(array $bucket, $row, $now)
+    {
+        if (!$row) {
+            $this->host->Record->insert(self::RATE_TABLE, [
+                'bucket' => $bucket['key'],
+                'window_start' => $now,
+                'hits' => 1,
+            ]);
+
+            return;
+        }
+
+        $expired = (((int) $row->window_start + $bucket['window']) <= $now);
+        $this->host->Record->where('bucket', '=', $bucket['key'])->update(self::RATE_TABLE, [
+            'window_start' => $expired ? $now : (int) $row->window_start,
+            'hits' => $expired ? 1 : ((int) $row->hits + 1),
+        ]);
+    }
+
+    /**
+     * Creates the rate-limit table when an install predates it.
+     */
+    private function chatEnsureRateTable()
+    {
+        try {
+            $this->host->Record
+                ->setField('bucket', ['type' => 'varchar', 'size' => 80])
+                ->setField('window_start', ['type' => 'int', 'size' => 11, 'unsigned' => true])
+                ->setField('hits', ['type' => 'int', 'size' => 11, 'unsigned' => true, 'default' => 0])
+                ->setKey(['bucket'], 'primary')
+                ->setKey(['window_start'], 'index')
+                ->create(self::RATE_TABLE, true);
+        } catch (Throwable $e) {
+            // Nothing more to try; the next message will attempt again.
+        }
+    }
+
+    /**
+     * The module row holding this company's ReliableSite credentials, with its
+     * meta decrypted.
+     *
+     * @return stdClass|null
+     */
+    private function moduleRow()
+    {
+        Loader::loadModels($this->host, ['ModuleManager']);
+
+        foreach ((array) $this->host->ModuleManager->getByClass('reliablesite', $this->companyId) as $module) {
+            foreach ((array) $this->host->ModuleManager->getRows($module->id) as $row) {
+                if (isset($row->meta->api_key) && $row->meta->api_key !== '') {
+                    $this->moduleId = (int) $module->id;
+
+                    return $row;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * A logger the chat client can write module-log entries through. Memoized so
+     * every entry from one request shares a log group.
+     *
+     * @return ReliablesiteApiLogger
+     */
+    private function chatLogger()
+    {
+        if ($this->logger === null) {
+            $this->logger = new ReliablesiteApiLogger($this->host, $this->moduleId);
+        }
+
+        return $this->logger;
+    }
+
+    /**
+     * Records a local (non-upstream) chat problem in the module log.
+     *
+     * @param string $url A label for the log's URL column
+     * @param string $data
+     * @param bool $success
+     */
+    private function logChat($url, $data, $success)
+    {
+        $this->chatLogger()->myLog('chat:' . $url, $data, 'input', $success);
+    }
+
+    /**
+     * The chat endpoint's failure body.
+     *
+     * `errors` is an array of display-safe strings, matching the shape the other
+     * endpoints use; `success` is a real boolean here because this endpoint is
+     * new and has no WHMCS-compatible consumers to keep happy.
+     *
+     * @param int $status
+     * @param string $message
+     * @param array $extra Additional top-level fields
+     */
+    private function chatFail($status, $message, array $extra = [])
+    {
+        http_response_code($status);
+        echo json_encode(array_merge(['success' => false, 'errors' => [$message]], $extra));
+    }
+
     /**
      * The company serving this hostname, so a multi-company install answers
      * with the right catalog.
@@ -443,8 +917,7 @@ class ReliablesiteWidgetApi
         $host = isset($_SERVER['HTTP_HOST']) ? (string) $_SERVER['HTTP_HOST'] : '';
 
         $script = isset($_SERVER['SCRIPT_NAME']) ? (string) $_SERVER['SCRIPT_NAME'] : '';
-        // Built from the real paths so a renamed module directory still works.
-        $ownPath = 'components/modules/' . basename(dirname(__FILE__)) . '/' . basename(__FILE__);
+        $ownPath = $this->ownPath();
         $position = strrpos($script, $ownPath);
         $webDir = ($position !== false) ? substr($script, 0, $position) : '/';
         if ($webDir === '' || substr($webDir, -1) !== '/') {
@@ -452,6 +925,18 @@ class ReliablesiteWidgetApi
         }
 
         return ($https ? 'https://' : 'http://') . $host . $webDir;
+    }
+
+    /**
+     * This file's path relative to the Blesta web root.
+     *
+     * Built from the real paths so a renamed module directory still works.
+     *
+     * @return string
+     */
+    private function ownPath()
+    {
+        return 'components/modules/' . basename(dirname(__FILE__)) . '/' . basename(__FILE__);
     }
 
     /**
@@ -490,6 +975,66 @@ class ReliablesiteWidgetApi
         if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
             http_response_code(200);
             exit;
+        }
+    }
+}
+
+/**
+ * Writes module-log entries from outside the module.
+ *
+ * Module::log() is protected and needs the module instance, which this file
+ * deliberately never builds. Chat turns still belong in the same place an admin
+ * already looks - Tools > Logs > Module Log - so this writes there directly,
+ * with the same shape Module::log() produces.
+ */
+class ReliablesiteApiLogger
+{
+    /** @var stdClass Host object carrying the Logs model */
+    private $host;
+
+    /** @var int */
+    private $moduleId;
+
+    /** @var string|null 8-character identifier linking one request's entries */
+    private $group = null;
+
+    /**
+     * @param stdClass $host
+     * @param int $moduleId
+     */
+    public function __construct($host, $moduleId)
+    {
+        $this->host = $host;
+        $this->moduleId = (int) $moduleId;
+    }
+
+    /**
+     * @param string $url
+     * @param string $data
+     * @param string $direction input or output
+     * @param bool $success
+     */
+    public function myLog($url, $data = null, $direction = 'input', $success = false)
+    {
+        if ($this->moduleId <= 0) {
+            return;
+        }
+        if ($this->group === null) {
+            $this->group = substr(md5(mt_rand()), 0, 8);
+        }
+
+        try {
+            Loader::loadModels($this->host, ['Logs']);
+            $this->host->Logs->addModule([
+                'module_id' => $this->moduleId,
+                'direction' => $direction,
+                'url' => $url,
+                'data' => $data,
+                'status' => ($success ? 'success' : 'error'),
+                'group' => $this->group,
+            ]);
+        } catch (Throwable $e) {
+            // Logging must never break a chat turn.
         }
     }
 }

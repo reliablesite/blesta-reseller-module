@@ -7,6 +7,111 @@ if (empty($has_key)) {
         . '</div>';
 }
 
+/**
+ * Two things live on this screen, and they are different products:
+ *
+ *   The chat below is Brian answering *you* as a ReliableSite reseller, from the
+ *   central catalog - a staff tool.
+ *
+ *   The panel above is the white-label assistant you publish to your own
+ *   visitors, answering as your brand from your catalog. It has no UI of its own
+ *   here because it runs on your website, so what it needs from this screen is
+ *   its address and an honest read on whether it will work.
+ */
+$wl = isset($whitelabel) ? $whitelabel : null;
+if ($wl) {
+    $ready = $wl['config']['enabled'] && empty($wl['problems']);
+
+    // Collapsed once the assistant is enabled and working: there is nothing to
+    // act on, and the chat below is what the admin opened this screen for. Left
+    // open while it is off or unhealthy, so setup work is not hidden behind a
+    // chevron nobody thinks to click.
+    $wl_open = !$ready;
+
+    ob_start();
+    ?>
+    <div class="collapse<?php echo $wl_open ? ' show' : ''; ?>" id="rs_brian_wl_body">
+    <div class="card-body">
+    <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+        <span class="badge rounded-pill <?php echo $ready ? 'bg-success' : ($wl['config']['enabled'] ? 'bg-warning text-dark' : 'bg-secondary'); ?>">
+            <i class="bi <?php echo $ready ? 'bi-check-circle' : 'bi-slash-circle'; ?> me-1"></i>
+            <?php $this->_($wl['config']['enabled']
+                ? 'Reliablesite.askbrian.wl_enabled'
+                : 'Reliablesite.askbrian.wl_disabled'); ?>
+        </span>
+        <?php if ($wl['config']['company_name'] !== '' || $wl['config']['agent_name'] !== '') { ?>
+            <span class="text-muted small">
+                Answers as
+                <strong><?php echo $this->Html->safe($wl['config']['agent_name'] !== ''
+                    ? $wl['config']['agent_name'] : 'your assistant'); ?></strong>
+                <?php if ($wl['config']['company_name'] !== '') { ?>
+                    of <strong><?php echo $this->Html->safe($wl['config']['company_name']); ?></strong>
+                <?php } ?>
+            </span>
+        <?php } ?>
+        <span class="text-muted small">
+            &middot; <?php echo (int) count($wl['config']['allowed_origins']); ?> allowed
+            website<?php echo count($wl['config']['allowed_origins']) === 1 ? '' : 's'; ?>
+        </span>
+        <a class="btn btn-outline-secondary btn-sm ms-auto"
+            href="<?php echo $this->Html->safe($settings_link ?? '#'); ?>">
+            <i class="bi bi-gear me-1"></i>Configure
+        </a>
+    </div>
+
+    <label for="rs_wl_endpoint" class="form-label">Endpoint your website posts to</label>
+    <div class="input-group mb-1">
+        <input type="text" id="rs_wl_endpoint" class="form-control" readonly
+            value="<?php echo $this->Html->safe($wl['endpoint']); ?>" />
+        <span class="input-group-text">POST</span>
+    </div>
+    <div class="form-text mb-0">
+        Send <code>{"message": "..."}</code> as JSON and echo the returned
+        <code>sessionId</code> back on every later message.
+    </div>
+
+    <?php if (!empty($wl['problems'])) { ?>
+        <div class="alert alert-warning mt-3 mb-0" role="alert">
+            <div class="fw-semibold mb-1">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>Not ready yet
+            </div>
+            <ul class="mb-0 ps-3">
+                <?php foreach ($wl['problems'] as $problem) { ?>
+                    <li><?php echo $this->Html->safe($problem); ?></li>
+                <?php } ?>
+            </ul>
+        </div>
+    <?php } ?>
+    </div>
+    </div>
+    <?php
+    $wl_body = ob_get_clean();
+
+    $wl_toggle = [
+        'name' => '',
+        'icon' => 'bi bi-chevron-down',
+        'attributes' => [
+            'href' => '#rs_brian_wl_body',
+            'data-bs-toggle' => 'collapse',
+            'role' => 'button',
+            'aria-controls' => 'rs_brian_wl_body',
+            'aria-expanded' => ($wl_open ? 'true' : 'false'),
+            'title' => 'Show or hide the assistant details',
+        ],
+    ];
+
+    $this->Widget->clear();
+    $this->Widget->setLinkButtons([$wl_toggle]);
+    $this->Widget->setBodyWrapper(false);
+    $this->Widget->create($this->_('Reliablesite.askbrian.wl_title', true), ['id' => 'rs_brian_wl']);
+
+    // A Bootstrap collapse, so the panel is plain markup inside the card rather
+    // than something the Widget renders for us - the same shape the filter
+    // panels on the list screens use.
+    echo $wl_body;
+    $this->Widget->end();
+}
+
 $this->Widget->clear();
 $this->Widget->setBodyWrapper(false);
 $this->Widget->create($this->_('Reliablesite.askbrian.box_title', true), ['id' => 'rs_askbrian']);

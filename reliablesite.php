@@ -17,10 +17,14 @@
 class Reliablesite extends Module
 {
     /** @var string Module version */
-    const RS_VERSION = '2.4.0';
+    const RS_VERSION = '2.6.0';
 
-    /** @var string AskBrian (Sales Engineer) reseller web-chat endpoint */
-    const BRIAN_API_URL = 'https://api-brian.reliablesite.net/api/web-chat-reslr';
+    /**
+     * @var string Path of the module's public endpoint file, relative to the
+     * Blesta web root. Both the widget feeds and the white-label chat are served
+     * from it; see api.php.
+     */
+    const PUBLIC_API_PATH = 'components/modules/reliablesite/api.php';
 
     /** @var int Resolved module id */
     private $my_module_id = 0;
@@ -126,6 +130,7 @@ class Reliablesite extends Module
                 $this->Record->drop('mod_reliablesite_packages');
                 $this->Record->drop('mod_reliablesite_sync_logs');
                 $this->Record->drop('mod_reliablesite_option_groups');
+                $this->Record->drop('mod_reliablesite_chat_rate');
             } catch (Exception $e) {
                 // best effort
             }
@@ -180,6 +185,18 @@ class Reliablesite extends Module
             ->setKey(['id'], 'primary')
             ->setKey(['rs_group_id'], 'index')
             ->create('mod_reliablesite_option_groups', true);
+
+        // Rate-limit counters for the public white-label chat endpoint. One row
+        // per bucket (a hashed visitor IP, or the store-wide daily bucket); see
+        // ReliablesiteWidgetApi::chatRateLimit(). Nothing else about a
+        // conversation is stored locally.
+        $this->Record
+            ->setField('bucket', ['type' => 'varchar', 'size' => 80])
+            ->setField('window_start', ['type' => 'int', 'size' => 11, 'unsigned' => true])
+            ->setField('hits', ['type' => 'int', 'size' => 11, 'unsigned' => true, 'default' => 0])
+            ->setKey(['bucket'], 'primary')
+            ->setKey(['window_start'], 'index')
+            ->create('mod_reliablesite_chat_rate', true);
     }
 
     /**
@@ -323,6 +340,17 @@ class Reliablesite extends Module
             'markup_type' => 0,
             'markup_value' => 0,
             'cycle_mode' => 0,
+            // Customer-facing white-label assistant (api.php?action=chat)
+            'brian_chat_enabled' => 0,
+            'brian_agent_name' => 0,
+            'brian_company_name' => 0,
+            'brian_currency' => 0,
+            'brian_allowed_origins' => 0,
+            'brian_rate_limit' => 0,
+            'brian_rate_window' => 0,
+            'brian_daily_cap' => 0,
+            'brian_behind_proxy' => 0,
+            'brian_public_base_url' => 0,
         ];
     }
 
@@ -1237,6 +1265,10 @@ class Reliablesite extends Module
             }
         }
 
+        // The public chat endpoint, shown read-only beside its settings so an
+        // admin can copy it straight into their site's widget.
+        $base_url = $this->publicBaseUrl(isset($vars['brian_public_base_url']) ? $vars['brian_public_base_url'] : '');
+
         $content = $this->renderViewRaw('settings', [
             'vars' => (object) $vars,
             'edit' => $edit,
@@ -1244,6 +1276,7 @@ class Reliablesite extends Module
             'group_options' => $group_options,
             'currency_options' => $currency_options,
             'payment_methods' => $payment_methods,
+            'chat_endpoint' => rtrim($base_url, '/') . '/' . self::PUBLIC_API_PATH . '?action=chat',
             'home_link' => $this->base_uri . 'settings/company/modules/manage/' . $module_id,
         ]);
 
@@ -2834,6 +2867,8 @@ class Reliablesite extends Module
      */
     private function askBrianScreen(array &$vars)
     {
+        $this->loadBrianLib();
+
         // AJAX turn: proxy a single message to the Brian API and return JSON.
         // askBrianRespond() terminates the request, so nothing after it runs.
         if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
@@ -2844,13 +2879,90 @@ class Reliablesite extends Module
 
         $api_key = $this->getSetting('api_key');
 
+        // Status of the customer-facing white-label assistant, shown above the
+        // staff chat so both halves of the Brian integration live on one screen.
+        $config = ReliablesiteBrian::whiteLabelConfig($this->getModuleRowMeta());
+        $base_url = $this->publicBaseUrl($config['base_url']);
+
         return $this->renderManageScreen('askbrian', 'askbrian', 'askbrian', [
             'ajax_url' => $this->base_uri . 'settings/company/modules/addrow/'
                 . $this->getModuleId() . '/?scr=askbrian&ajax=1',
             'session_id' => $this->askBrianSessionId(),
             'has_key' => ($api_key !== null && $api_key !== ''),
+            'whitelabel' => [
+                'config' => $config,
+                'endpoint' => rtrim($base_url, '/') . '/' . self::PUBLIC_API_PATH . '?action=chat',
+                'problems' => ReliablesiteBrian::whiteLabelProblems($config, (string) $api_key, $base_url),
+            ],
+            'settings_link' => $this->base_uri . 'settings/company/modules/editrow/'
+                . $this->getModuleId() . '/' . $this->getModuleRowId() . '/#rs_brian',
             'home_link' => $this->base_uri . 'settings/company/modules/manage/' . $this->getModuleId(),
         ]);
+    }
+
+    /**
+     * Loads the shared Brian chat client.
+     */
+    private function loadBrianLib()
+    {
+        if (!class_exists('ReliablesiteBrian')) {
+            Loader::load(dirname(__FILE__) . DS . 'lib' . DS . 'reliablesite_brian.php');
+        }
+    }
+
+    /**
+     * The active module row's meta, for helpers that want the whole set rather
+     * than one key at a time.
+     *
+     * @return object|null
+     */
+    private function getModuleRowMeta()
+    {
+        list($meta) = $this->resolveRow();
+
+        return $meta;
+    }
+
+    /**
+     * The public base URL of this Blesta install - what the outside world (a
+     * browser widget, and Brian itself) must use to reach api.php.
+     *
+     * Derived from the company hostname plus the web directory, the same way
+     * Blesta builds the URIs it puts in emails. $this->base_uri cannot be used:
+     * it points into the admin portal, and api.php sits outside it.
+     *
+     * https is forced because Brian reads the catalog over the public internet
+     * and refuses plain http. An admin whose public URL differs from what Blesta
+     * knows (a vanity domain, a reverse proxy) overrides it in settings.
+     *
+     * @param string $override Configured override, or '' to derive
+     * @return string Absolute URL, no trailing slash
+     */
+    private function publicBaseUrl($override = '')
+    {
+        $override = rtrim(trim((string) $override), '/');
+        if ($override !== '') {
+            return $override;
+        }
+
+        Loader::loadModels($this, ['Companies']);
+        $company_id = Configure::get('Blesta.company_id');
+        $company = $this->Companies->get($company_id);
+        $host = ($company && isset($company->hostname)) ? rtrim($company->hostname, '/') : '';
+        if ($host === '') {
+            $host = isset($_SERVER['HTTP_HOST']) ? preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST']) : '';
+        }
+
+        $webdir = '/';
+        $root_web = $this->Companies->getSetting($company_id, 'root_web_dir');
+        if ($root_web && defined('ROOTWEBDIR')) {
+            $webdir = str_replace(DS, '/', str_replace(rtrim($root_web->value, DS), '', ROOTWEBDIR));
+        }
+        if ($webdir === '' || substr($webdir, -1) !== '/') {
+            $webdir .= '/';
+        }
+
+        return 'https://' . $host . $webdir;
     }
 
     /**
@@ -2918,66 +3030,31 @@ class Reliablesite extends Module
         if ($message === '') {
             return ['success' => false, 'error' => 'Please enter a message.'];
         }
-        if (strlen($message) > 2000) {
-            return ['success' => false, 'error' => 'Message must be 2000 characters or fewer.'];
+        if (strlen($message) > ReliablesiteBrian::MAX_MESSAGE_LENGTH) {
+            return [
+                'success' => false,
+                'error' => 'Message must be ' . ReliablesiteBrian::MAX_MESSAGE_LENGTH
+                    . ' characters or fewer.',
+            ];
         }
 
         $api_key = $this->getSetting('api_key');
         if (empty($api_key)) {
             return ['success' => false, 'error' => Language::_('Reliablesite.!error.api_key.missing', true)];
         }
-        if (!function_exists('curl_version')) {
-            return ['success' => false, 'error' => 'cURL extension is not available.'];
+
+        $brian = new ReliablesiteBrian($api_key, $this);
+        $result = $brian->sendReseller($message, $session_id, $assignment_id, $this->clientIp());
+
+        if ($result['error'] !== '') {
+            return ['success' => false, 'error' => 'Could not reach the assistant: ' . $result['error']];
         }
-
-        $body = ['message' => $message];
-        if ($session_id !== '') {
-            $body['sessionId'] = $session_id;
-        }
-        if ($assignment_id !== '') {
-            $body['assignmentId'] = $assignment_id;
-        }
-
-        $headers = [
-            'Content-Type: application/json',
-            'x-api-key: ' . $api_key,
-        ];
-        $client_ip = $this->clientIp();
-        if (!empty($client_ip)) {
-            $headers[] = 'x-client-ip: ' . $client_ip;
-        }
-
-        $ch = curl_init(self::BRIAN_API_URL);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-        $verify = class_exists('Configure') ? (bool) Configure::get('Blesta.curl_verify_ssl') : false;
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $verify);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $verify ? 2 : 0);
-
-        $response = curl_exec($ch);
-        $curl_error = curl_error($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($curl_error) {
-            $this->log(self::BRIAN_API_URL, $response, 'output', false);
-
-            return ['success' => false, 'error' => 'Could not reach the assistant: ' . $curl_error];
-        }
-
-        $parsed = json_decode($response, true);
-        if (!is_array($parsed)) {
-            $this->log(self::BRIAN_API_URL, $response, 'output', false);
-
+        if ($result['body'] === null) {
             return ['success' => false, 'error' => 'Unexpected response from the assistant.'];
         }
 
-        if ($status >= 200 && $status < 300 && !empty($parsed['success'])) {
-            $this->log(self::BRIAN_API_URL, $response, 'output', true);
-
+        $parsed = $result['body'];
+        if ($result['ok']) {
             return [
                 'success' => true,
                 'response' => isset($parsed['response']) ? $parsed['response'] : '',
@@ -2986,11 +3063,10 @@ class Reliablesite extends Module
             ];
         }
 
-        $this->log(self::BRIAN_API_URL, $response, 'output', false);
         $msg = isset($parsed['message']) ? $parsed['message'] : 'The assistant returned an error.';
-        if ($status === 401) {
+        if ($result['status'] === 401) {
             $msg = 'The assistant rejected the reseller API key (401 Unauthorized).';
-        } elseif ($status === 404) {
+        } elseif ($result['status'] === 404) {
             $msg = 'The assistant channel is not enabled for this key (404 Not Found).';
         }
 

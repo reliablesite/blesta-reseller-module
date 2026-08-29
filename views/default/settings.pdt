@@ -29,6 +29,16 @@ $label = function ($for, $text, $tip = null) {
     }
     echo '</label>';
 };
+
+/**
+ * A quieter heading for grouping inside one section. The assistant settings are
+ * ten fields deep; without this they read as one undifferentiated block, and
+ * promoting the groups to .form-section-header would make them look like peers
+ * of Connection and Orders.
+ */
+$subsection = function ($text) {
+    echo '<div class="rs-subsection">' . $this->Html->safe($text) . '</div>';
+};
 ?>
 
     <h6 class="form-section-header">Connection</h6>
@@ -180,6 +190,162 @@ $label = function ($for, $text, $tip = null) {
                 ]);
             }
             ?>
+        </div>
+    </div>
+
+    <h6 class="form-section-header mt-4" id="rs_brian">Customer-facing sales assistant</h6>
+    <p class="text-muted small mb-3">
+        Publishes a white-label Brian endpoint your own website can post to, so visitors chat
+        with an assistant that answers as your company, quotes your prices and links into your
+        order form. Your API key stays on this server - the browser only ever talks to Blesta.
+    </p>
+
+    <div class="row g-3">
+        <div class="col-12">
+            <div class="form-check">
+                <?php $this->Form->fieldCheckbox(
+                    'brian_chat_enabled',
+                    '1',
+                    (isset($vars->brian_chat_enabled) && $vars->brian_chat_enabled == '1'),
+                    ['id' => 'brian_chat_enabled', 'class' => 'form-check-input']
+                ); ?>
+                <label for="brian_chat_enabled" class="form-check-label">
+                    <?php $this->_('Reliablesite.row_meta.brian_chat_enabled'); ?>
+                    <i class="bi bi-info-circle ms-1" data-bs-toggle="tooltip" data-bs-placement="top"
+                        title="<?php echo $this->Html->safe($this->_('Reliablesite.row_meta.brian_chat_enabled.note', true)); ?>"></i>
+                </label>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <?php $label(
+                'brian_chat_endpoint',
+                'Endpoint URL',
+                'Read-only. This is the address your website posts each visitor message to.'
+            ); ?>
+            <div class="input-group">
+                <input type="text" id="brian_chat_endpoint" class="form-control"
+                    value="<?php echo $this->Html->safe($chat_endpoint ?? ''); ?>" readonly />
+                <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+            </div>
+        </div>
+    </div>
+
+    <?php $subsection('Identity'); ?>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <?php $label(
+                'brian_agent_name',
+                $this->_('Reliablesite.row_meta.brian_agent_name', true),
+                'The name the assistant introduces itself with on your site.'
+            ); ?>
+            <?php $this->Form->fieldText('brian_agent_name', $vars->brian_agent_name ?? null, [
+                'id' => 'brian_agent_name', 'class' => 'form-control', 'placeholder' => 'Alex'
+            ]); ?>
+        </div>
+        <div class="col-md-4">
+            <?php $label(
+                'brian_company_name',
+                $this->_('Reliablesite.row_meta.brian_company_name', true),
+                'The company the assistant says it works for. Never mentions ReliableSite.'
+            ); ?>
+            <?php $this->Form->fieldText('brian_company_name', $vars->brian_company_name ?? null, [
+                'id' => 'brian_company_name', 'class' => 'form-control', 'placeholder' => 'Example Hosting'
+            ]); ?>
+        </div>
+        <div class="col-md-4">
+            <?php $label(
+                'brian_currency',
+                $this->_('Reliablesite.row_meta.brian_currency', true),
+                'The currency quoted prices are given in.'
+            ); ?>
+            <?php
+            $brian_currency_options = ['' => $this->_('Reliablesite.settings.currency_default', true)];
+            foreach ($currency_options as $code => $name) {
+                $brian_currency_options[$code] = $name;
+            }
+            $this->Form->fieldSelect('brian_currency', $brian_currency_options, $vars->brian_currency ?? null, [
+                'id' => 'brian_currency', 'class' => 'form-select'
+            ]);
+            ?>
+        </div>
+    </div>
+
+    <?php $subsection('Access'); ?>
+    <div class="row g-3 align-items-start">
+        <div class="col-md-6">
+            <?php $label(
+                'brian_allowed_origins',
+                $this->_('Reliablesite.row_meta.brian_allowed_origins', true),
+                $this->_('Reliablesite.row_meta.brian_allowed_origins.note', true)
+            ); ?>
+            <?php $this->Form->fieldTextarea('brian_allowed_origins', $vars->brian_allowed_origins ?? null, [
+                'id' => 'brian_allowed_origins',
+                'class' => 'form-control',
+                'rows' => '4',
+                'spellcheck' => 'false',
+                'placeholder' => "https://www.example.com\n*.example.com"
+            ]); ?>
+        </div>
+        <div class="col-md-6">
+            <?php $label(
+                'brian_public_base_url',
+                $this->_('Reliablesite.row_meta.brian_public_base_url', true),
+                $this->_('Reliablesite.row_meta.brian_public_base_url.note', true)
+            ); ?>
+            <?php $this->Form->fieldText('brian_public_base_url', $vars->brian_public_base_url ?? null, [
+                'id' => 'brian_public_base_url',
+                'class' => 'form-control',
+                'placeholder' => 'https://billing.example.com/'
+            ]); ?>
+
+            <?php // Same subject as the field above it: how the public reaches this install. ?>
+            <div class="form-check mt-3">
+                <?php $this->Form->fieldCheckbox(
+                    'brian_behind_proxy',
+                    '1',
+                    (isset($vars->brian_behind_proxy) && $vars->brian_behind_proxy == '1'),
+                    ['id' => 'brian_behind_proxy', 'class' => 'form-check-input']
+                ); ?>
+                <label for="brian_behind_proxy" class="form-check-label">
+                    <?php $this->_('Reliablesite.row_meta.brian_behind_proxy'); ?>
+                    <i class="bi bi-info-circle ms-1" data-bs-toggle="tooltip" data-bs-placement="top"
+                        title="<?php echo $this->Html->safe($this->_('Reliablesite.row_meta.brian_behind_proxy.note', true)); ?>"></i>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <?php $subsection('Rate limits'); ?>
+    <div class="row g-3">
+        <div class="col-6 col-md-3">
+            <?php $label(
+                'brian_rate_limit',
+                $this->_('Reliablesite.row_meta.brian_rate_limit', true),
+                'Messages one visitor may send per window.'
+            ); ?>
+            <?php $this->Form->fieldText('brian_rate_limit', $vars->brian_rate_limit ?? '20', [
+                'id' => 'brian_rate_limit', 'class' => 'form-control', 'inputmode' => 'numeric'
+            ]); ?>
+        </div>
+        <div class="col-6 col-md-3">
+            <?php $label(
+                'brian_rate_window',
+                $this->_('Reliablesite.row_meta.brian_rate_window', true),
+                'Length of that window, in seconds.'
+            ); ?>
+            <?php $this->Form->fieldText('brian_rate_window', $vars->brian_rate_window ?? '600', [
+                'id' => 'brian_rate_window', 'class' => 'form-control', 'inputmode' => 'numeric'
+            ]); ?>
+        </div>
+        <div class="col-6 col-md-3">
+            <?php $label(
+                'brian_daily_cap',
+                $this->_('Reliablesite.row_meta.brian_daily_cap', true),
+                'Total messages per day across your whole site. 0 disables the cap.'
+            ); ?>
+            <?php $this->Form->fieldText('brian_daily_cap', $vars->brian_daily_cap ?? '0', [
+                'id' => 'brian_daily_cap', 'class' => 'form-control', 'inputmode' => 'numeric'
+            ]); ?>
         </div>
     </div>
 

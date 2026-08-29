@@ -229,6 +229,30 @@
     line-height: 1.6;
 }
 
+/* Sub-heading inside a settings section (settings.pdt $subsection). Quieter
+   than .form-section-header on purpose: it groups a long section without
+   reading as another top-level heading beside Connection or Orders. */
+.rs-admin .rs-subsection {
+    margin: 1.5rem 0 .5rem;
+    color: var(--text-muted);
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+/* A card header whose chevron toggles a Bootstrap collapse. Bootstrap keeps
+   aria-expanded on the trigger in step with the panel, so the glyph can point
+   down while the panel is hidden and up while it is open without any JS of our
+   own - the header then says which state it is in even when the body is gone. */
+.rs-admin .card-filter-bar .btn[data-bs-toggle="collapse"] .bi-chevron-down {
+    transition: transform .2s ease;
+}
+
+.rs-admin .card-filter-bar .btn[data-bs-toggle="collapse"][aria-expanded="true"] .bi-chevron-down {
+    transform: rotate(180deg);
+}
+
 /* ------------------------------------------------------------------ *
  * Pending orders (was an inline <style> block, 13 hardcoded colours)
  * ------------------------------------------------------------------ */
