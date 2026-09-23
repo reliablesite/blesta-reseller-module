@@ -24,6 +24,7 @@ $kget = function ($keys) use ($kvm) {
     return '';
 };
 ?>
+<?php include __DIR__ . '/instant_kvm_link.pdt'; ?>
 <div class="card mb-3">
     <div class="card-header"><strong>KVM / IPMI Remote Console</strong></div>
     <div class="card-body">

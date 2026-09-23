@@ -1,0 +1,9 @@
+<?php if (!empty($instant_kvm_available) && !empty($instant_kvm_url)) { ?>
+<div class="card mb-3 mt-3">
+    <div class="card-body">
+        <h3 style="font-size:1.1rem;margin:0 0 .5rem">Instant KVM</h3>
+        <p>Open the browser console in a new tab. Keyboard, media and power controls are provided by ReliableSite.</p>
+        <a class="btn btn-primary" style="white-space:normal;min-height:44px;display:inline-flex;align-items:center" href="<?php echo $this->Html->safe($instant_kvm_url); ?>" target="_blank" rel="noopener noreferrer">Launch Instant KVM ↗</a>
+    </div>
+</div>
+<?php } ?>

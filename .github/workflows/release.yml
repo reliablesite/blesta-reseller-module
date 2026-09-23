@@ -120,6 +120,8 @@ jobs:
           rsync -a \
             --exclude='.git' \
             --exclude='.github' \
+            --exclude='.gitignore' \
+            --exclude='tests' \
             --exclude='dist' \
             ./ dist/reliablesite/
 

@@ -10,6 +10,7 @@ if (!empty($is_assigned)) {
     <a class="btn btn-primary" href="<?php echo $this->Html->safe($manage_link); ?>">
         <i class="bi bi-hdd-rack me-1"></i>Manage Server
     </a>
+    <?php include __DIR__ . '/instant_kvm_link.pdt'; ?>
 <?php
 } else {
 ?>

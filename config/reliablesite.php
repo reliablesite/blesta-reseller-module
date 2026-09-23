@@ -1,4 +1,10 @@
 <?php
+// Instant KVM origins must be explicitly verified for your deployed locations.
+// No wildcard hosts. Never put launch tokens or API credentials here.
+Configure::set('Reliablesite.instant_kvm_origins', ['https://kvmproxy-ny1.reliablesite.net']);
+// Exact proxy peer IPs only. Each trusted peer MUST overwrite X-Forwarded-For
+// with one validated public browser IP, never append an untrusted chain.
+Configure::set('Reliablesite.instant_kvm_trusted_proxies', []);
 /**
  * ReliableSite module welcome-email templates, surfaced by getEmailTemplate().
  *

@@ -1,0 +1,5 @@
+# Local test output is not part of the module or release.
+tests/artifacts/
+dist/
+verify/
+ReliableSite-Blesta-Reseller-*.zip

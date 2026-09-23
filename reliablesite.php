@@ -17,7 +17,7 @@
 class Reliablesite extends Module
 {
     /** @var string Module version */
-    const RS_VERSION = '2.6.0';
+    const RS_VERSION = '2.7.0';
 
     /**
      * @var string Path of the module's public endpoint file, relative to the
@@ -559,6 +559,9 @@ class Reliablesite extends Module
      */
     public function manageModule($module, array &$vars)
     {
+        if (($_GET['scr'] ?? null) === 'instantkvm') {
+            $this->emitInstantKvmResponse($this->instantKvmResponse($_GET['rsid'] ?? '', $vars));
+        }
         $this->view = new View('manage', 'default');
         $this->view->base_uri = $this->base_uri;
         $this->view->setDefaultView('components' . DS . 'modules' . DS . 'reliablesite' . DS);
@@ -999,6 +1002,10 @@ class Reliablesite extends Module
         $fields = $this->serviceFieldsToObject($service->fields);
         $server_id = isset($fields->reliablesite_server_id) ? $fields->reliablesite_server_id : '';
 
+        if (($get['p'] ?? null) === 'instantkvm') {
+            $this->emitInstantKvmResponse($this->instantKvmResponse($server_id, $post ?? [], $service));
+        }
+
         if ($service->status !== 'active' || $server_id === '') {
             return $this->renderView('client_pending', ['service' => $service]);
         }
@@ -1019,14 +1026,19 @@ class Reliablesite extends Module
 
         $base = $this->base_uri . 'settings/company/modules/addrow/' . $this->getModuleId();
 
-        return $this->renderView('tab_admin_manage', [
+        if (($get['p'] ?? null) === 'instantkvm') {
+            $this->emitInstantKvmResponse($this->instantKvmResponse($server_id, $post ?? [], $service, true));
+        }
+
+        $instant_kvm = $service->status === 'active' ? $this->instantKvmUi($server_id, $service, true) : [];
+        return $this->renderView('tab_admin_manage', array_merge($instant_kvm, [
             'is_assigned' => ($server_id !== ''),
             'server_id' => $server_id,
             'server_label' => isset($fields->reliablesite_server_label) ? $fields->reliablesite_server_label : '',
             'username' => isset($fields->reliablesite_username) ? $fields->reliablesite_username : '',
             'manage_link' => $base . '/?scr=manageserver&rsid=' . urlencode($server_id),
             'assign_link' => $base . '/?scr=pendingorders',
-        ]);
+        ]));
     }
 
     /**
@@ -1066,6 +1078,8 @@ class Reliablesite extends Module
                 return $this->renderView('client_os', $data, true);
             case 'kvm':
                 $data['kvm'] = $this->apiData($api->getKVMDetails($server_id));
+
+                $data = array_merge($data, $this->instantKvmUi($server_id, $service));
 
                 return $this->renderView('client_kvm', $data, true);
             case 'bandwidth':
@@ -1521,6 +1535,7 @@ class Reliablesite extends Module
                 break;
             case 'kvm':
                 $data['kvm'] = $this->apiData($api->getKVMDetails($server_id));
+                $data = array_merge($data, $this->instantKvmUi($_GET['rsid'] ?? ''));
                 break;
             case 'bandwidth':
                 $bwperiod = isset($_GET['period']) ? preg_replace('/[^A-Za-z]/', '', $_GET['period']) : 'Day';
@@ -1946,6 +1961,166 @@ class Reliablesite extends Module
         Configure::load('reliablesite', dirname(__FILE__) . DS . 'config' . DS);
 
         return Configure::get('Reliablesite.email_templates');
+    }
+
+    /**
+     * Dedicated console response, reached only through authenticated Blesta controllers.
+     * Does not use the legacy API/token logger. GET never launches a provider session.
+     */
+    protected function instantKvmResponse($server_id, array $post, $service = null, $admin_service = false)
+    {
+        Loader::loadComponents($this, ['Session']);
+        Loader::loadHelpers($this, ['Form']);
+        Loader::load(dirname(__FILE__) . DS . 'lib' . DS . 'reliablesite_instant_kvm.php');
+        $response = ['status' => 200, 'headers' => ['Cache-Control' => 'no-store',
+            'Referrer-Policy' => 'no-referrer', 'X-Content-Type-Options' => 'nosniff', 'X-Frame-Options' => 'DENY'],
+            'view' => 'instant_kvm', 'data' => ['console_error' => null, 'console_config' => null]];
+        $is_post = ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST';
+        // Some Blesta tab dispatches pass an empty callback array despite PHP
+        // receiving the form body. Use the request's parsed form fields in that case.
+        if ($is_post && !$post) { $post = $_POST; }
+        try {
+            if (!in_array($_SERVER['REQUEST_METHOD'] ?? '', ['GET', 'POST'], true)) {
+                $response['status'] = 405;
+                throw new RuntimeException('This request method is not allowed.');
+            }
+            if (!$this->instantKvmAuthorized($service, $admin_service)) {
+                $response['status'] = 403;
+                throw new RuntimeException('You are not authorized to open this console.');
+            }
+            $server_id = ReliablesiteInstantKvm::serverId($server_id);
+            $nonces = $this->Session->read('reliablesite_kvm_nonces') ?: [];
+            $scope = $admin_service
+                ? 'admin-service:' . $service->id . ':' . $service->module_row_id . ':' . $server_id
+                : ($service ? 'client:' . $service->client_id : 'admin') . ':' . $server_id;
+            if ($is_post) {
+                if (($post['action'] ?? '') !== 'instant_kvm_launch') {
+                    $response['status'] = 403;
+                    $response['reason'] = 'invalid_action';
+                    throw new RuntimeException('The console request expired. Please request a fresh launch.');
+                }
+                if (!$this->Form->verifyCsrfToken('reliablesite-instant-kvm', $post['_csrf_token'] ?? '')) {
+                    $response['status'] = 403;
+                    $response['reason'] = 'invalid_csrf';
+                    throw new RuntimeException('The console request expired. Please request a fresh launch.');
+                }
+                if (!is_string($post['nonce'] ?? null)
+                    || !isset($nonces[$post['nonce']]) || $nonces[$post['nonce']]['scope'] !== $scope
+                    || $nonces[$post['nonce']]['expires'] < time()) {
+                    $response['status'] = 403;
+                    $response['reason'] = 'invalid_nonce';
+                    throw new RuntimeException('The console request expired. Please request a fresh launch.');
+                }
+                unset($nonces[$post['nonce']]);
+                $this->Session->write('reliablesite_kvm_nonces', $nonces);
+                if ((int) $this->Session->read('reliablesite_kvm_last_launch') > time() - 10) {
+                    $response['status'] = 429;
+                    throw new RuntimeException('Please wait 10 seconds before requesting another launch.');
+                }
+                // Local session throttle, not an assertion about provider rate limits.
+                $this->Session->write('reliablesite_kvm_last_launch', time());
+                $source_ip = ReliablesiteInstantKvm::sourceIp($_SERVER, (array) Configure::get('Reliablesite.instant_kvm_trusted_proxies'));
+                $response['json'] = ['JavascriptUrl' => $this->getInstantKvmApi()->launch($server_id, $source_ip)];
+            } else {
+                if (!$this->getInstantKvmApi()->available($server_id)) {
+                    throw new RuntimeException('Instant KVM is unavailable for this server.');
+                }
+                $nonce = bin2hex(random_bytes(32));
+                $nonces = array_filter($nonces, function ($entry) { return $entry['expires'] >= time(); });
+                $nonces = array_slice($nonces, -31, null, true);
+                $nonces[$nonce] = ['scope' => $scope, 'expires' => time() + 300];
+                $this->Session->write('reliablesite_kvm_nonces', $nonces);
+                $response['data']['console_config'] = ['origins' => (array) Configure::get('Reliablesite.instant_kvm_origins'),
+                    'csrf' => $this->Form->getCsrfToken('reliablesite-instant-kvm'), 'nonce' => $nonce];
+            }
+        } catch (RuntimeException $e) {
+            if ($response['status'] === 200) { $response['status'] = 502; }
+            if ($is_post) { $response['json'] = ['error' => $e->getMessage()]; if (isset($response['reason'])) { $response['json']['reason'] = $response['reason']; } }
+            else { $response['data']['console_error'] = $e->getMessage(); }
+        }
+        return $response;
+    }
+
+    /** Stop framework rendering/persistence: this document has no Blesta chrome. */
+    protected function emitInstantKvmResponse(array $response)
+    {
+        http_response_code($response['status']);
+        foreach ($response['headers'] as $name => $value) { header($name . ': ' . $value); }
+        if (isset($response['json'])) {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode($response['json'], JSON_UNESCAPED_SLASHES);
+        } else {
+            header('Content-Type: text/html; charset=UTF-8');
+            echo $this->renderViewRaw($response['view'], $response['data']);
+        }
+        exit;
+    }
+
+    /** Capability-gated entry link. Failure must never expose a launch button. */
+    protected function instantKvmUi($server_id, $service = null, $admin_service = false)
+    {
+        $data = ['instant_kvm_available' => false, 'instant_kvm_url' => ''];
+        try {
+            if (!$this->instantKvmAuthorized($service, $admin_service) || !$this->getInstantKvmApi()->available($server_id)) {
+                return $data;
+            }
+            $data['instant_kvm_available'] = true;
+            $data['instant_kvm_url'] = $service
+                ? ($admin_service
+                    ? $this->base_uri . 'clients/servicetab/' . $service->client_id . '/' . $service->id . '/tabAdminManage/?p=instantkvm'
+                    : $this->base_uri . 'services/manage/' . $service->id . '/tabClientManage/?p=instantkvm')
+                : $this->base_uri . 'settings/company/modules/manage/' . $this->getModuleId()
+                    . '/?scr=instantkvm&rsid=' . rawurlencode($server_id);
+        } catch (RuntimeException $e) {
+            // No upstream error text or token-bearing URLs in logs or UI.
+        }
+        return $data;
+    }
+
+    /** Additional local checks; controller login/client-area permissions still apply. */
+    private function instantKvmAuthorized($service = null, $admin_service = false)
+    {
+        Loader::loadComponents($this, ['Session']);
+        if (!$this->Session->read('blesta_id')) { return false; }
+        if ($admin_service) {
+            // The native admin service-tab controller binds this row from the service,
+            // never from query parameters. Do not fall back to another account.
+            $row = $this->getModuleRow();
+            if (!$service || $service->status !== 'active' || empty($service->module_row_id)
+                || !$row || (string) $row->id !== (string) $service->module_row_id
+                || empty($row->meta->api_key)) {
+                return false;
+            }
+        }
+        if ($service !== null && !$admin_service) {
+            return $service->status === 'active' && $this->Session->read('blesta_client_id') > 0
+                && (string) $service->client_id === (string) $this->Session->read('blesta_client_id');
+        }
+        $staff_id = $this->Session->read('blesta_staff_id');
+        if (!$staff_id) { return false; }
+        Loader::loadModels($this, ['Staff']);
+        Loader::loadComponents($this, ['Acl']);
+        $company_id = Configure::get('Blesta.company_id');
+        $staff = $this->Staff->get($staff_id, $company_id);
+        return $staff && $staff->status === 'active' && !empty($staff->group)
+            && (string) $staff->group->company_id === (string) $company_id
+            && $this->Acl->check('staff_group_' . $staff->group->id, 'admin_company_modules', 'manage');
+    }
+
+    /** Builds a short-lived, non-logging API client; credentials stay backend-only. */
+    protected function getInstantKvmApi()
+    {
+        Loader::load(dirname(__FILE__) . DS . 'lib' . DS . 'reliablesite_instant_kvm.php');
+        list($meta, $row_id) = $this->resolveRow();
+        Loader::loadModels($this, ['ModuleManager']);
+        $row = $row_id ? $this->ModuleManager->getRow($row_id) : null;
+        $module = $row ? $this->ModuleManager->get($row->module_id) : null;
+        if (!$module || $module->class !== 'reliablesite'
+            || (string) $module->company_id !== (string) Configure::get('Blesta.company_id')
+            || empty($row->meta->api_key)) {
+            throw new RuntimeException('Instant KVM is not configured for this company.');
+        }
+        return new ReliablesiteInstantKvm($row->meta->api_key, (array) Configure::get('Reliablesite.instant_kvm_origins'));
     }
 
     // =================================================================

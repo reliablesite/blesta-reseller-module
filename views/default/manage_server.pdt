@@ -177,6 +177,7 @@ $this->Widget->create(
             <?php
         // ===================== KVM =====================
         } elseif ($page === 'kvm') {
+            include __DIR__ . '/instant_kvm_link.pdt';
             $enabled = !empty($kvm['accessEnabled']);
             $kget = function ($keys) use ($kvm) {
                 foreach ((array) $keys as $k) {
