@@ -71,11 +71,17 @@ jobs:
 
           # Nothing ships that PHP cannot parse. .pdt files are PHP too.
           # php -l is chatty on success, so only surface the failures.
-          if ! find . -path ./.git -prune -o \( -name '*.php' -o -name '*.pdt' \) -print0 \
+          if ! find . -path ./.git -prune -o \( -name '*.php' -o -name '*.pdt' \) ! -path './tests/transport_test.php' -print0 \
                | xargs -0 -n1 php -l > lint.log 2>&1; then
             grep -v 'No syntax errors detected' lint.log || true
             rm -f lint.log
             echo "::error::PHP syntax check failed"
+            exit 1
+          fi
+          if ! php -n -l tests/transport_test.php >> lint.log 2>&1; then
+            grep -v 'No syntax errors detected' lint.log || true
+            rm -f lint.log
+            echo "::error::Isolated cURL transport test syntax check failed"
             exit 1
           fi
           rm -f lint.log

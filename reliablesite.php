@@ -17,7 +17,7 @@
 class Reliablesite extends Module
 {
     /** @var string Module version */
-    const RS_VERSION = '2.7.0';
+    const RS_VERSION = '2.7.1';
 
     /**
      * @var string Path of the module's public endpoint file, relative to the
