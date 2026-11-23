@@ -371,7 +371,7 @@ class ReliablesiteApi
     public function assignDdosProfileIp($dataSourceId, $profileId, $ipInput)
     {
         return $this->callAPI(
-            'DDoS/Profiles/' . $dataSourceId . '/' . $profileId . '/AssignIp',
+            $this->profilePath($dataSourceId, $profileId) . '/AssignIp',
             ['ipInput' => $ipInput],
             'POST',
             true
@@ -381,10 +381,15 @@ class ReliablesiteApi
     public function removeDdosProfileIp($dataSourceId, $profileId, $ipId)
     {
         return $this->callAPI(
-            'DDoS/Profiles/' . $dataSourceId . '/' . $profileId . '/Ips/' . $ipId,
+            $this->profilePath($dataSourceId, $profileId) . '/Ips/' . $ipId,
             [],
             'DELETE'
         );
+    }
+
+    private function profilePath($dataSourceId, $profileId)
+    {
+        return 'DDoS/Profiles/' . rawurlencode($dataSourceId) . '/' . rawurlencode($profileId);
     }
 
     // -----------------------------------------------------------------
@@ -596,7 +601,12 @@ class ReliablesiteApi
         curl_close($ch);
 
         if ($curlError) {
-            $response['errors'][] = $curlError;
+            if (strpos($endPoint, 'DDoS/Profiles/') === 0) {
+                $response['unknown_outcome'] = true;
+                $response['errors'][] = 'The operation outcome is unknown. Refresh assignments before another change.';
+            } else {
+                $response['errors'][] = $curlError;
+            }
             $this->myLog($url, $jsonRequest, 'input', false);
             $this->myLog($url, json_encode(['curl_error' => $curlError]), 'output', false);
 
@@ -606,6 +616,11 @@ class ReliablesiteApi
         $parsedResponse = json_decode($resp, true);
 
         if (!is_array($parsedResponse)) {
+            if (strpos($endPoint, 'DDoS/Profiles/') === 0 && $httpCode >= 500) {
+                $response['unknown_outcome'] = true;
+                $response['errors'][] = 'The operation outcome is unknown. Refresh assignments before another change.';
+                return $response;
+            }
             $error = 'Unexpected response (HTTP ' . $httpCode . ')';
             if ($httpCode === 405) {
                 $error = 'Method Not Allowed';
@@ -621,6 +636,17 @@ class ReliablesiteApi
             $this->myLog($url, $jsonRequest, 'input', false);
             $this->myLog($url, (string) $resp, 'output', false);
 
+            return $response;
+        }
+
+        if (strpos($endPoint, 'DDoS/Profiles/') === 0 && $httpCode >= 500) {
+            $response['unknown_outcome'] = true;
+            $response['errors'][] = 'The operation outcome is unknown. Refresh assignments before another change.';
+            return $response;
+        }
+        if (strpos($endPoint, 'DDoS/Profiles/') === 0 && ($httpCode < 200 || $httpCode >= 300)) {
+            $message = $parsedResponse['message'] ?? null;
+            $response['errors'][] = is_scalar($message) ? (string) $message : 'ReliableSite API error (HTTP ' . $httpCode . ')';
             return $response;
         }
 
@@ -647,7 +673,7 @@ class ReliablesiteApi
         } else {
             $error = 'ReliableSite API error';
         }
-        $response['errors'][] = $error;
+        $response['errors'][] = is_scalar($error) ? (string) $error : 'ReliableSite API error';
         $this->myLog($url, $jsonRequest, 'input', false);
         $this->myLog($url, json_encode($parsedResponse), 'output', false);
 

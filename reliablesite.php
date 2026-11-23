@@ -17,7 +17,7 @@
 class Reliablesite extends Module
 {
     /** @var string Module version */
-    const RS_VERSION = '2.7.1';
+    const RS_VERSION = '2.7.2';
 
     /**
      * @var string Path of the module's public endpoint file, relative to the
@@ -561,6 +561,9 @@ class Reliablesite extends Module
     {
         if (($_GET['scr'] ?? null) === 'instantkvm') {
             $this->emitInstantKvmResponse($this->instantKvmResponse($_GET['rsid'] ?? '', $vars));
+        }
+        if (($_GET['scr'] ?? null) === 'ddosaction' || (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && in_array($vars['action'] ?? null, ['ddos_assign', 'ddos_remove'], true))) {
+            $this->emitAdminDdosAction($this->adminDdosActionResponse($module, $vars));
         }
         $this->view = new View('manage', 'default');
         $this->view->base_uri = $this->base_uri;
@@ -1106,6 +1109,7 @@ class Reliablesite extends Module
                 return $this->renderView('client_mac', $data, true);
             case 'ddos':
                 $data = array_merge($data, $this->buildDdosData($api, $server_id));
+                $data['ddos_csrf'] = $this->Form->getCsrfToken('reliablesite-ddos-client');
 
                 return $this->renderView('client_ddos', $data, true);
             case 'overview':
@@ -1195,23 +1199,14 @@ class Reliablesite extends Module
                 $out['page'] = 'mac';
                 break;
             case 'ddos_assign':
-                $resp = $api->assignDdosProfileIp(
-                    isset($post['data_source_id']) ? $post['data_source_id'] : '',
-                    isset($post['profile_id']) ? $post['profile_id'] : '',
-                    isset($post['ip_input']) ? trim($post['ip_input']) : ''
-                );
-                $out['notice'] = Language::_('Reliablesite.client.ddos_assigned', true);
-                $out['page'] = 'ddos';
-                break;
             case 'ddos_remove':
-                $resp = $api->removeDdosProfileIp(
-                    isset($post['data_source_id']) ? $post['data_source_id'] : '',
-                    isset($post['profile_id']) ? $post['profile_id'] : '',
-                    isset($post['ip_id']) ? $post['ip_id'] : ''
-                );
-                $out['notice'] = Language::_('Reliablesite.client.ddos_removed', true);
                 $out['page'] = 'ddos';
-                break;
+                if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !is_string($post['_csrf_token'] ?? null) || !$this->Form->verifyCsrfToken('reliablesite-ddos-client', $post['_csrf_token'])) {
+                    $out['error'] = 'Invalid DDoS form token. Refresh and try again.';
+                    return $out;
+                }
+                return $this->handleDdosAction($api, $server_id, $post, $action);
+
         }
 
         if (empty($resp['success'])) {
@@ -1219,6 +1214,97 @@ class Reliablesite extends Module
             $out['error'] = !empty($resp['errors']) ? implode('; ', $resp['errors']) : Language::_('Reliablesite.client.action_failed', true);
         }
 
+        return $out;
+    }
+
+    /** Validate a fresh profile/location pair and server-owned IP before any write. */
+    private function handleDdosAction($api, $server_id, array $post, $action)
+    {
+        $out = ['notice' => null, 'error' => null, 'page' => 'ddos'];
+        $ds = $post['data_source_id'] ?? null;
+        $pid = $post['profile_id'] ?? null;
+        if (!is_string($ds) || !is_string($pid) || $ds === '' || $pid === '') {
+            $out['error'] = 'Select a current DDoS profile.';
+            return $out;
+        }
+        $list = $api->ddosProfiles();
+        $details = $api->getServerDetails($server_id);
+        if (empty($list['success']) || empty($details['success']) || !is_array($list['data']) || !is_array($details['data'])) {
+            $out['error'] = 'Could not verify the current profiles and server IPs. No change was sent.';
+            return $out;
+        }
+        $rows = $list['data']['profiles'] ?? [];
+        $blocks = $details['data']['ipAddressList'] ?? [];
+        $selected = null;
+        foreach ($rows as $row) {
+            if (isset($row['profile']['id'], $row['dataSourceId'])
+                && is_string($row['profile']['id']) && is_string($row['dataSourceId'])
+                && $row['profile']['id'] === $pid && $row['dataSourceId'] === $ds) {
+                $selected = $row;
+                break;
+            }
+        }
+        if ($selected === null) {
+            $out['error'] = 'The selected profile/location is not in the current catalog. Refresh and select it again.';
+            return $out;
+        }
+        if ($action === 'ddos_assign') {
+            $ip = $post['ip_input'] ?? null;
+            if (!is_string($ip) || $ip === '') {
+                $out['error'] = 'Select an IP or subnet on this server.';
+                return $out;
+            }
+            $owned = false;
+            foreach ($blocks as $block) {
+                if (isset($block['ipDescription']) && $this->cidrInCidr($ip, $block['ipDescription'])) {
+                    $owned = true;
+                    break;
+                }
+            }
+            if (!$owned) {
+                $out['error'] = 'The IP or subnet is not on this server.';
+                return $out;
+            }
+            $resp = $api->assignDdosProfileIp($ds, $pid, $ip);
+        } else {
+            $id = $post['ip_id'] ?? null;
+            if (!is_scalar($id) || !preg_match('/^(0|[1-9][0-9]*)$/D', (string) $id)
+                || filter_var((string) $id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]) === false) {
+                $out['error'] = 'Invalid assignment ID.';
+                return $out;
+            }
+            $owned = false;
+            foreach (($selected['ips'] ?? []) as $entry) {
+                $assignmentId = $entry['ipId'] ?? ($entry['id'] ?? null);
+                $entryIp = $entry['ip'] ?? ($entry['ipAddress'] ?? null);
+                if ((string) $assignmentId !== (string) $id || !is_string($entryIp)) {
+                    continue;
+                }
+                foreach ($blocks as $block) {
+                    if (isset($block['ipDescription']) && $this->cidrInCidr($entryIp, $block['ipDescription'])) {
+                        $owned = true;
+                        break 2;
+                    }
+                }
+            }
+            if (!$owned) {
+                $out['error'] = 'This assignment is not on the selected server/profile.';
+                return $out;
+            }
+            $resp = $api->removeDdosProfileIp($ds, $pid, (int) $id);
+        }
+        if (empty($resp['success'])) {
+            $out['error'] = !empty($resp['unknown_outcome'])
+                ? 'The operation outcome is unknown. Refresh and reconcile assignments before making another change.'
+                : (!empty($resp['errors']) ? implode('; ', $resp['errors']) : 'DDoS operation refused.');
+        } else {
+            $out['notice'] = $action === 'ddos_assign'
+                ? Language::_('Reliablesite.client.ddos_assigned', true)
+                : Language::_('Reliablesite.client.ddos_removed', true);
+            if ($action === 'ddos_assign' && !empty($resp['data']['skipped'])) {
+                $out['notice'] .= ' Some IPs were already assigned.';
+            }
+        }
         return $out;
     }
 
@@ -1492,14 +1578,29 @@ class Reliablesite extends Module
         $page = isset($_GET['p']) ? preg_replace('/[^a-z]/', '', $_GET['p']) : 'overview';
         $notice = null;
         $error = null;
+        Loader::loadComponents($this, ['Session']);
+        $flash = $this->Session->read('reliablesite_ddos_flash');
+        if ($flash) {
+            $this->Session->clear('reliablesite_ddos_flash');
+            $flash = json_decode($flash, true);
+            if (is_array($flash) && ($flash['server'] ?? null) === $server_id) {
+                if (($flash['type'] ?? null) === 'success') { $notice = $flash['msg'] ?? null; }
+                else { $error = $flash['msg'] ?? null; }
+            }
+        }
 
         $base = $this->base_uri . 'settings/company/modules/addrow/' . $this->getModuleId();
+        $ddos_action_url = $this->base_uri . 'settings/company/modules/manage/' . $this->getModuleId() . '/?scr=ddosaction';
+        Loader::loadHelpers($this, ['Form']);
+        $ddos_csrf = $this->Form->getCsrfToken('reliablesite-ddos-admin');
         $srv_base = $base . '/?scr=manageserver&rsid=' . urlencode($server_id) . '&';
 
         $data = [
             'server_id' => $server_id,
             'page' => $page,
             'srv_base' => $srv_base,
+            'ddos_action_url' => $ddos_action_url,
+            'ddos_csrf' => $ddos_csrf,
             'back_link' => $base . '/?scr=servers',
             'client_ip' => $this->clientIp(),
         ];
@@ -1511,8 +1612,10 @@ class Reliablesite extends Module
             return $this->renderManageScreen('manage_server', 'provisioning', 'servers', $data);
         }
 
+        // Blesta's addRow controller consumes POST as a credential-row creation.
+        // Do not dispatch DDoS writes from this screen until a dedicated module endpoint exists.
         // Handle GET actions.
-        if (!empty($_GET['action'])) {
+        if (!empty($_GET['action']) && !in_array($_GET['action'], ['ddos_assign', 'ddos_remove'], true)) {
             if ($_GET['action'] === 'unassign') {
                 $res = $this->loadAssignment()->unassign($server_id);
                 $notice = !empty($res['success']) ? Language::_('Reliablesite.servers.unassigned', true) : null;
@@ -1554,6 +1657,7 @@ class Reliablesite extends Module
                 break;
             case 'ddos':
                 $data = array_merge($data, $this->buildDdosData($api, $server_id));
+                $data['ddos_csrf'] = $this->Form->getCsrfToken('reliablesite-ddos-client');
                 break;
             case 'overview':
             default:
@@ -2052,6 +2156,83 @@ class Reliablesite extends Module
         } else {
             header('Content-Type: text/html; charset=UTF-8');
             echo $this->renderViewRaw($response['view'], $response['data']);
+        }
+        exit;
+    }
+
+    /** Dedicated admin write route, intercepted before Blesta persists module metadata. */
+    protected function adminDdosActionResponse($module, array $post)
+    {
+        $result = ['status' => 403, 'message' => 'DDoS action denied.', 'redirect' => null];
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            $result['status'] = 405;
+            return $result;
+        }
+        if (!$this->instantKvmAuthorized() || !$module || $module->class !== 'reliablesite'
+            || (string) $module->company_id !== (string) Configure::get('Blesta.company_id')
+            || (string) $module->id !== (string) $this->getModuleId()) {
+            return $result;
+        }
+        $server = $post['rsid'] ?? null;
+        if (!is_string($server) || !preg_match('/\A[A-Za-z0-9_-]+\z/D', $server)) {
+            $result['status'] = 400;
+            $result['message'] = 'Invalid server identifier.';
+            return $result;
+        }
+        Loader::loadHelpers($this, ['Form']);
+        if (!$this->Form->verifyCsrfToken('reliablesite-ddos-admin', $post['_csrf_token'] ?? null)) {
+            return $result;
+        }
+        if (!in_array($post['action'] ?? null, ['ddos_assign', 'ddos_remove'], true)) {
+            $result['status'] = 400;
+            return $result;
+        }
+        // The admin dashboard and the API must resolve the same credential row.
+        $firstRow = null;
+        foreach ($module->rows as $row) {
+            if (!empty($row->meta->api_key)) { $firstRow = $row; break; }
+        }
+        if (!$firstRow || (string) $firstRow->module_id !== (string) $module->id
+            || (string) $this->selectedDdosRowId() !== (string) $firstRow->id) {
+            return $result;
+        }
+        $api = $this->getApi();
+        $details = $api->getServerDetails($server);
+        if (empty($details['success']) || !is_array($details['data'])
+            || !isset($details['data']['ipAddressList']) || !is_array($details['data']['ipAddressList'])) {
+            $result['status'] = 404;
+            $result['message'] = 'Server is not accessible to this account.';
+            return $result;
+        }
+        $out = $this->handleDdosAction($api, $server, $post, $post['action']);
+        Loader::loadComponents($this, ['Session']);
+        $this->Session->write('reliablesite_ddos_flash', json_encode([
+            'server' => $server, 'type' => $out['error'] ? 'error' : 'success',
+            'msg' => $out['error'] ?: $out['notice'],
+        ]));
+        $result['status'] = 303;
+        $result['message'] = '';
+        $result['redirect'] = $this->base_uri . 'settings/company/modules/addrow/' . $module->id
+            . '/?scr=manageserver&rsid=' . rawurlencode($server) . '&p=ddos';
+        return $result;
+    }
+
+    protected function selectedDdosRowId()
+    {
+        list(, $rowId) = $this->resolveRow();
+        return $rowId;
+    }
+
+    protected function emitAdminDdosAction(array $result)
+    {
+        http_response_code($result['status']);
+        header('Cache-Control: no-store');
+        header('X-Content-Type-Options: nosniff');
+        if ($result['redirect'] !== null) {
+            header('Location: ' . $result['redirect'], true, 303);
+        } else {
+            header('Content-Type: text/plain; charset=UTF-8');
+            echo $result['message'];
         }
         exit;
     }
@@ -2988,20 +3169,16 @@ class Reliablesite extends Module
     private function cidrInCidr($child, $parent)
     {
         $split = function ($cidr) {
-            $cidr = trim($cidr);
-            if (strpos($cidr, '/') !== false) {
-                $parts = explode('/', $cidr, 2);
-
-                return [$parts[0], (int) $parts[1]];
-            }
-
-            return [$cidr, 32];
+            if (!is_string($cidr)) return [null, null];
+            $parts = explode('/', trim($cidr));
+            if (count($parts) > 2 || filter_var($parts[0], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false || (count($parts) === 2 && (!preg_match('/^(?:0|[1-9][0-9]*)$/D', $parts[1]) || strlen($parts[1]) > 2 || (int) $parts[1] > 32))) return [null, null];
+            return [$parts[0], count($parts) === 2 ? (int) $parts[1] : 32];
         };
 
         list($childIp, $childMask) = $split($child);
         list($parentIp, $parentMask) = $split($parent);
 
-        if ($childMask < $parentMask) {
+        if ($childMask === null || $parentMask === null || $childMask < $parentMask) {
             return false;
         }
         $childLong = ip2long($childIp);

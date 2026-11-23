@@ -171,5 +171,6 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.TAG }}
           name: ${{ steps.version.outputs.VERSION }}
-          generate_release_notes: true
+          body_path: CHANGELOG.md
+          generate_release_notes: false
           files: ReliableSite-Blesta-Reseller-${{ steps.version.outputs.VERSION }}.zip

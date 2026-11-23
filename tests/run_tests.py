@@ -22,6 +22,9 @@ try:
     for test in ['instant_kvm_test.php', 'module_instant_kvm_test.php', 'config_test.php']:
         run(['php', '-d', 'error_reporting=32767', '-d', 'display_errors=1', 'tests/' + test])
     run(['php', '-n', 'tests/transport_test.php'])
+    for test in ['ddos_contract_test.php', 'ddos_handler_test.php', 'ddos_admin_test.php', 'ddos_client_test.php']:
+        run(['php', '-d', 'error_reporting=32767', '-d', 'display_errors=1', 'tests/' + test])
+    run(['php', '-n', 'tests/ddos_transport_test.php'])
     run(['node', 'tests/instant_kvm_js_test.js'])
     with socket.socket() as sock:
         sock.bind(('127.0.0.1', 0)); port = sock.getsockname()[1]
